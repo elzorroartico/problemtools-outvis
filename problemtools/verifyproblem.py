@@ -1468,6 +1468,26 @@ class OutputValidators(ProblemPart):
         # TODO: check that all output validators give same result
         return res
 
+class OutputVisualizer(ProblemPart):
+    PART_NAME = 'output_visualizer'
+
+  
+    #TODO fix setup
+   def setup(self):
+
+        return
+
+    def __str__(self) -> str:
+        return 'output visualizer'
+
+    #From superclass, find out what it does
+    def start_background_work(self, context: Context) -> None:
+        pass
+
+    #Perform the check here
+    def check(self, context: Context) -> bool: 
+        return True
+
 
 class Runner:
     def __init__(self, problem: Problem, sub, context: Context, timelim: int, timelim_low: int, timelim_high: int) -> None:
