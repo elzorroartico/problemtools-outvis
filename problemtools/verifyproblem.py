@@ -1491,6 +1491,12 @@ class OutputVisualizer(ProblemPart):
                  context.submit_background_work(lambda v: v.compile(), vis)
             self._has_precompiled = True
         
+    def _actual_visualizers(self) -> list:
+        vals = self._visualizers
+        if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
+            visuals = ['none'] #Change to variable _none_visualizer? TODO
+            return [visuals for vis in visuals if vis is not None]
+
 
     #Perform the check here
     def check(self, context: Context) -> bool: 
