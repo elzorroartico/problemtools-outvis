@@ -1470,12 +1470,13 @@ class OutputValidators(ProblemPart):
 
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
+    self._visualizer = 'none'
 
     _default_visualizer = run.get_tool('default_visualizer') #Should probably not exist? TODO
   
     #TODO fix setup
-   def setup(self): #Stolen from outputVal
-        self._visualizers = run.find_programs(os.path.join(self.problem.probdir,'output_visualizers'), 
+   def setup(self): #find output_vis
+        self._visualizer = run.find_programs(os.path.join(self.problem.probdir,'output_visualizer'), 
         work_dir=self.problem.tmpdir)
 
         self._has_precompiled = False
@@ -1487,12 +1488,12 @@ class OutputVisualizer(ProblemPart):
     #From superclass, find out what it does
     def start_background_work(self, context: Context) -> None:
         if not self._has_precompiled:
-            for vis in self._actual_visualizers(): #Create in superclass?
-                 context.submit_background_work(lambda v: v.compile(), vis)
+            #for vis in self._actual_visualizer(): #Create in setup?
+            context.submit_background_work(lambda v: v.compile(), vis) #TODO make sure it works with background_work
             self._has_precompiled = True
         
-    def _actual_visualizers(self) -> list:
-        vals = self._visualizers
+    def _actual_visualizer(self) -> list: #Wrong wrong
+        vis = self._visualizer
         if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
             visuals = ['none'] #Change to variable _none_visualizer? TODO
             return [visuals for vis in visuals if vis is not None]
@@ -1530,49 +1531,46 @@ class OutputVisualizer(ProblemPart):
             os.unlink(file_name)
 
 
-            def check_image_type(file)->bool
+    def check_image_type(file)->bool
                     #ORDER png, jpg, jpeg, missing: SVG
-                    permitted_filetypes = [ 
-                        b"89 50 4E 47 0D 0A 1A 0A",
-                        b"FF D8 FF E0",
-                        b"FF D8 FF D9"
-
-                    ]
-                    with open(file, "rb") as f:
-                        file_signature = f.read(8)
+         permitted_filetypes = [ 
+         b"89 50 4E 47 0D 0A 1A 0A",
+         b"FF D8 FF E0",
+         b"FF D8 FF D9" ]
+         with open(file, "rb") as f:
+             file_signature = f.read(8)
                         
-                    for type in permitted_filetypes:
-                        if file_signature.startswith(type):
-                            return True
-                    return False
+         for type in permitted_filetypes:
+             if file_signature.startswith(type):
+             return True
+         return False
 
 
             #TODO actual visualizer
 
-            def visualize(self, testcase: TestCase, submission_output:str) -> bool: #Take in everything and see if it creates a image, Maybe take input files? 
-                res = False
-                flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
-                save_image = False
-                #TODO get input files
+    def visualize(self, testcase: TestCase, submission_output:str) -> bool: #maybe should retunr logs instead?
+         res = False
+         flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
+         save_image = False
+         #TODO get input files
                 
 
                 #TODO Run the visualiser
-                if flag in flags:
-                    save_image = True
-                    path = "" # fix path to right place TODO
-                    visualisedir = tempfile.mkdtemp(dir=path)
+         if flag in flags:
+             save_image = True
+             path = "" # fix path to right place TODO
+             visualisedir = tempfile.mkdtemp(dir=path)
 
-                for vis in self._actual_visualizers():
-                    if vis.compile()[0]:
-                        tempimage = vis.run(submission_output,
-                        args =[testcase.infile])
-                        #lot of code
+             if self._actual_visualizer().compile()[0]:
+                 tempimage = vis.run(submission_output,
+                 args =[testcase.infile])
+                  #lot of code
+                 check_image_type(tempimage)
 
+                 #TODO Check the byte file
 
-                        #TODO Check the byte file
-
-                        if save_image:
-                            #add to tmpdir
+                 if save_image:
+                   #add to tmpdir
 
 
 
@@ -1846,7 +1844,7 @@ PROBLEM_FORMATS = {
     },
     '2023-07': { # TODO: Add all the parts
         'statement':    [ProblemStatement2023_07, Attachments],
-        'visualizers': [OutputVisualizers]
+        'visualizers': [OutputVisualizer]
 
     }
 }
