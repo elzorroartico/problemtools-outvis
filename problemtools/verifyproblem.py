@@ -1487,8 +1487,8 @@ class OutputVisualizer(ProblemPart):
     #From superclass, find out what it does
     def start_background_work(self, context: Context) -> None:
         if not self._has_precompiled:
-            for val in self._actual_visualizers(): #Create in superclass?
-                 context.submit_background_work(lambda v: v.compile(), val)
+            for vis in self._actual_visualizers(): #Create in superclass?
+                 context.submit_background_work(lambda v: v.compile(), vis)
             self._has_precompiled = True
         
 
@@ -1524,9 +1524,33 @@ class OutputVisualizer(ProblemPart):
             os.unlink(file_name)
 
 
-            def visualize(self, testcase: TestCase, submission_output:str) -> bool: #Take in everything and see if it creates a image
+            #TODO actual visualizer
+
+            def visualize(self, testcase: TestCase, submission_output:str) -> bool: #Take in everything and see if it creates a image, Maybe take input files? 
                 res = False
+                flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
+                save_image = False
+                #TODO get input files
                 
+
+                #TODO Run the visualiser
+                if flag in flags:
+                    save_image = True
+
+                for vis in self._actual_visualizers():
+                    if vis.compile()[0]:
+
+                        #lot of code
+
+                        if save_image:
+                            #add to tmpdir
+
+
+                #TODO Check the byte file
+
+                #TODO save it if flag is given
+
+
 
 
 class Runner:
