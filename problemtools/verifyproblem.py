@@ -1510,23 +1510,23 @@ class OutputVisualizer(ProblemPart):
         # if self.problem.config(ProblemConfig)['visualizers'] == 'none' and self._default_visualizer is None:
 
         #BELOW FROM OUTPUTVAL TODO
-        fd, file_name = tempfile.mkstemp()
-        os.close(fd)
-        for (desc, case) in _JUNK_CASES:
-            f = open(file_name, "wb")
-            f.write(case)
-            f.close()
-            rejected = False
-            for testcase in self.problem.get(ProblemTestCases)['root_group'].get_all_testcases():
-                result = self.visualize(testcase, file_name)
-                if result.verdict != 'AC':
-                    rejected = True
-                    if result.verdict == 'JE':
-                        self.error(f'{desc} as output, and output validator flags "{" ".join(flags)}" gave {result}')
-                        break
-                if not rejected:
-                    self.warning(f'{desc} gets AC')
-            os.unlink(file_name)
+        # fd, file_name = tempfile.mkstemp()
+        # os.close(fd)
+        # for (desc, case) in _JUNK_CASES:
+        #     f = open(file_name, "wb")
+        #     f.write(case)
+        #     f.close()
+        #     rejected = False
+        #     for testcase in self.problem.get(ProblemTestCases)['root_group'].get_all_testcases():
+        #         result = self.visualize(testcase, file_name)
+        #         if result.verdict != 'AC':
+        #             rejected = True
+        #             if result.verdict == 'JE':
+        #                 self.error(f'{desc} as output, and output validator flags "{" ".join(flags)}" gave {result}')
+        #                 break
+        #         if not rejected:
+        #             self.warning(f'{desc} gets AC')
+        #     os.unlink(file_name)
 
 
     #b"89 50 4E 47 0D 0A 1A 0A", file signatures in hex code
@@ -1557,7 +1557,7 @@ class OutputVisualizer(ProblemPart):
             path = "" # fix path to right place TODO
             visualisedir = tempfile.mkdtemp(dir=path)
 
-        if self._actual_visualizer().compile()[0]:
+        if self._actual_visualizer().compile()[0]: #TODO what is vis? should be _actual_visualizer
             tempimage = vis.run(submission_output,
             args =[testcase.infile])
                  #lot of code
@@ -1567,6 +1567,8 @@ class OutputVisualizer(ProblemPart):
 
             if save_image:
                 #add to tmpdir
+                pass
+                
         return res
 
 
