@@ -1473,20 +1473,31 @@ class OutputVisualizer(ProblemPart):
 
   
     #TODO fix setup
-   def setup(self):
+   def setup(self): #Stolen from outputVal
+        self._visualizers = run.find_programs(os.path.join(self.problem.probdir,'output_visualizers'), 
+        work_dir=self.problem.tmpdir)
 
+        self._has_precompiled = False
         return
 
-    def __str__(self) -> str:
+    def __str__(self) -> str: #nödvändigt?
         return 'output visualizer'
 
     #From superclass, find out what it does
     def start_background_work(self, context: Context) -> None:
-        pass
+        if not self._has_precompiled:
+            for val in self._actual_visualizers(): #Create in superclass?
+                 context.submit_background_work(lambda v: v.compile(), val)
+            self._has_precompiled = True
+        
 
     #Perform the check here
     def check(self, context: Context) -> bool: 
-        return True
+        if self._check_res is not None:
+            return self._check_res
+        self._check_res = True
+
+        if self.problem.get(ProblemConfig)['OutputVisualizers'] 
 
 
 class Runner:
@@ -1758,6 +1769,8 @@ PROBLEM_FORMATS = {
     },
     '2023-07': { # TODO: Add all the parts
         'statement':    [ProblemStatement2023_07, Attachments],
+        'visualizers': [OutputVisualizers]
+
     }
 }
 
