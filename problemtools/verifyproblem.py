@@ -1531,11 +1531,11 @@ class OutputVisualizer(ProblemPart):
 
 
             def check_image_type(file)->bool
-                    #ORDER png, jpeg, jpeg, missing: SVG
+                    #ORDER png, jpg, jpeg, missing: SVG
                     permitted_filetypes = [ 
                         b"89 50 4E 47 0D 0A 1A 0A",
                         b"FF D8 FF E0",
-                        b"FF D8 FF EE"
+                        b"FF D8 FF D9"
 
                     ]
                     with open(file, "rb") as f:
