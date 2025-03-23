@@ -1471,7 +1471,7 @@ class OutputValidators(ProblemPart):
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
 
-    _default_visualizer = run.get_tool('default_validator') #Should probably not exist? TODO
+    _default_visualizer = run.get_tool('default_visualizer') #Should probably not exist? TODO
   
     #TODO fix setup
    def setup(self): #Stolen from outputVal
