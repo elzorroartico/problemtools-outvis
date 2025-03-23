@@ -1471,8 +1471,6 @@ class OutputValidators(ProblemPart):
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
     _visualizer = 'none'
-
-    _default_visualizer = run.get_tool('default_visualizer') #Should probably not exist? TODO
   
     #TODO fix setup
     def setup(self): #find output_vis
@@ -1487,14 +1485,14 @@ class OutputVisualizer(ProblemPart):
     def start_background_work(self, context: Context) -> None:
         if not self._has_precompiled:
             #for vis in self._actual_visualizer(): #Create in setup? 
-            context.submit_background_work(lambda v: v.compile(), vis) #TODO make sure it works with background_work
+            context.submit_background_work(lambda v: v.compile(), self._visualizer) #TODO make sure it works with background_work
             self._has_precompiled = True
         
-    def _actual_visualizer(self) -> list: #Wrong wrong #TODO inte nödvändig?
-        vis = self._visualizer
-        if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
-            visuals = ['none'] #Change to variable _none_visualizer? TODO
-            return [visuals for vis in visuals if vis is not None]
+    # def _actual_visualizer(self) -> list: #Wrong wrong # inte nödvändig?
+    #     vis = self._visualizer
+    #     if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
+    #         visuals = ['none'] #Change to variable _none_visualizer? 
+    #         return [visuals for vis in visuals if vis is not None]
 
 
     #Perform the check here
@@ -1506,10 +1504,12 @@ class OutputVisualizer(ProblemPart):
         #Ingen check för om det är default då det inte finns någon default
         if self.problem.get(ProblemConfig)['visualizers'] != 'none' and not self._visualizers:
             self.error('problem.yaml specifies custom Output visualizer but no validator programs found')
+        
+        res = self.visualize(self.problem.get((ProblemTestCases)['root_group'].get_all_testcases()), "s") #TODO get submission output 
 
         # if self.problem.config(ProblemConfig)['visualizers'] == 'none' and self._default_visualizer is None:
 
-        #BELOW FROM OUTPUTVAL TODO
+        #BELOW FROM OUTPUTVAL 
         # fd, file_name = tempfile.mkstemp()
         # os.close(fd)
         # for (desc, case) in _JUNK_CASES:
@@ -1536,8 +1536,8 @@ class OutputVisualizer(ProblemPart):
         permitted_filetypes = [
         b"\x89PNG\r\n\x1A\n", 
         b"\xFF\xD8\xFF\xE0", 
-        b"\xFF\xD8\xFF\xD9"
-    ]
+        b"\xFF\xD8\xFF\xD9"    ]
+
         with open(file, "rb") as f:
             file_signature = f.read(8)
 
@@ -1557,13 +1557,11 @@ class OutputVisualizer(ProblemPart):
             path = "" # fix path to right place TODO
             visualisedir = tempfile.mkdtemp(dir=path)
 
-        if self._actual_visualizer().compile()[0]: #TODO what is vis? should be _actual_visualizer
-            tempimage = vis.run(submission_output,
+        if self._visualizer().compile()[0]: #TODO what is vis? should be _actual_visualizer
+            tempimage = self._visualizer.run(submission_output,
             args =[testcase.infile])
                  #lot of code
-            res.append(check_image_type(tempimage))
-
-                #TODO Check the byte file
+            res.append(self.check_image_type(tempimage))
 
             if save_image:
                 #add to tmpdir
