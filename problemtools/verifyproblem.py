@@ -1493,8 +1493,9 @@ class OutputVisualizer(ProblemPart):
     #     if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
     #         visuals = ['none'] #Change to variable _none_visualizer? 
     #         return [visuals for vis in visuals if vis is not None]
-    def create_folder():
-        default_path = Path(self.problem.get(__name__)) / f""
+    def create_folder(problem_name, judge_image, submission_name):
+        default_path = Path(self.problem.get(__name__) + "/"+ f"{judge_image}" + "/"+ f"{submission_name}")
+        os.mkdir(default_path)
 
 
     #Perform the check here
@@ -1534,7 +1535,7 @@ class OutputVisualizer(ProblemPart):
     #b"89 50 4E 47 0D 0A 1A 0A", file signatures in hex code
     #b"FF D8 FF E0",
     #b"FF D8 FF D9"
-    def check_image_type(file) -> bool:
+    def check_image_type(file) -> bool: #TODO svg support
         permitted_filetypes = [
         b"\x89PNG\r\n\x1A\n", 
         b"\xFF\xD8\xFF\xE0", 
