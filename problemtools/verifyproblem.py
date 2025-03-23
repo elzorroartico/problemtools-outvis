@@ -1493,6 +1493,8 @@ class OutputVisualizer(ProblemPart):
     #     if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
     #         visuals = ['none'] #Change to variable _none_visualizer? 
     #         return [visuals for vis in visuals if vis is not None]
+    def create_folder():
+        default_path = Path(self.problem.get(__name__)) / f""
 
 
     #Perform the check here
@@ -1557,7 +1559,7 @@ class OutputVisualizer(ProblemPart):
             path = "" # fix path to right place TODO
             visualisedir = tempfile.mkdtemp(dir=path)
 
-        if self._visualizer().compile()[0]: #TODO what is vis? should be _actual_visualizer
+        if self._visualizer().compile()[0]: 
             tempimage = self._visualizer.run(submission_output,
             args =[testcase.infile])
                  #lot of code
