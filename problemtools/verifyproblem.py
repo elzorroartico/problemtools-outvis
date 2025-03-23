@@ -1470,29 +1470,27 @@ class OutputValidators(ProblemPart):
 
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
-    self._visualizer = 'none'
+    _visualizer = 'none'
 
     _default_visualizer = run.get_tool('default_visualizer') #Should probably not exist? TODO
   
     #TODO fix setup
-   def setup(self): #find output_vis
+    def setup(self): #find output_vis
         self._visualizer = run.find_programs(os.path.join(self.problem.probdir,'output_visualizer'), 
         work_dir=self.problem.tmpdir)
-
         self._has_precompiled = False
-        return
-
+        
     def __str__(self) -> str: #nödvändigt?
         return 'output visualizer'
 
     #From superclass, find out what it does
     def start_background_work(self, context: Context) -> None:
         if not self._has_precompiled:
-            #for vis in self._actual_visualizer(): #Create in setup?
+            #for vis in self._actual_visualizer(): #Create in setup? 
             context.submit_background_work(lambda v: v.compile(), vis) #TODO make sure it works with background_work
             self._has_precompiled = True
         
-    def _actual_visualizer(self) -> list: #Wrong wrong
+    def _actual_visualizer(self) -> list: #Wrong wrong #TODO inte nödvändig?
         vis = self._visualizer
         if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
             visuals = ['none'] #Change to variable _none_visualizer? TODO
@@ -1531,46 +1529,46 @@ class OutputVisualizer(ProblemPart):
             os.unlink(file_name)
 
 
-    def check_image_type(file)->bool
-                    #ORDER png, jpg, jpeg, missing: SVG
-         permitted_filetypes = [ 
-         b"89 50 4E 47 0D 0A 1A 0A",
-         b"FF D8 FF E0",
-         b"FF D8 FF D9" ]
-         with open(file, "rb") as f:
-             file_signature = f.read(8)
-                        
-         for type in permitted_filetypes:
-             if file_signature.startswith(type):
-             return True
-         return False
+    #b"89 50 4E 47 0D 0A 1A 0A", file signatures in hex code
+    #b"FF D8 FF E0",
+    #b"FF D8 FF D9"
+    def check_image_type(file) -> bool:
+    permitted_filetypes = [
+        b"\x89PNG\r\n\x1A\n", 
+        b"\xFF\xD8\xFF\xE0", 
+        b"\xFF\xD8\xFF\xD9"
+    ]
+    with open(file, "rb") as f:
+        file_signature = f.read(8)
+
+    return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
 
-            #TODO actual visualizer
+     #TODO actual visualizer
 
     def visualize(self, testcase: TestCase, submission_output:str) -> bool: #maybe should retunr logs instead?
-         res = False
-         flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
-         save_image = False
-         #TODO get input files
+        res = False
+        flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
+        save_image = False
+        #TODO get input files
                 
 
-                #TODO Run the visualiser
-         if flag in flags:
-             save_image = True
-             path = "" # fix path to right place TODO
-             visualisedir = tempfile.mkdtemp(dir=path)
+                #TODO flag does not exist. Get it from calling output Vis
+        if flag in flags:
+            save_image = True
+            path = "" # fix path to right place TODO
+            visualisedir = tempfile.mkdtemp(dir=path)
 
-             if self._actual_visualizer().compile()[0]:
-                 tempimage = vis.run(submission_output,
-                 args =[testcase.infile])
-                  #lot of code
-                 check_image_type(tempimage)
+            if self._actual_visualizer().compile()[0]:
+                tempimage = vis.run(submission_output,
+                args =[testcase.infile])
+                 #lot of code
+                check_image_type(tempimage)
 
-                 #TODO Check the byte file
+                #TODO Check the byte file
 
-                 if save_image:
-                   #add to tmpdir
+                if save_image:
+                #add to tmpdir
 
 
 
