@@ -1530,6 +1530,23 @@ class OutputVisualizer(ProblemPart):
             os.unlink(file_name)
 
 
+            def check_image_type(file)->bool
+                    #ORDER png, jpeg, jpeg, missing: SVG
+                    permitted_filetypes = [ 
+                        b"89 50 4E 47 0D 0A 1A 0A",
+                        b"FF D8 FF E0",
+                        b"FF D8 FF EE"
+
+                    ]
+                    with open(file, "rb") as f:
+                        file_signature = f.read(8)
+                        
+                    for type in permitted_filetypes:
+                        if file_signature.startswith(type):
+                            return True
+                    return False
+
+
             #TODO actual visualizer
 
             def visualize(self, testcase: TestCase, submission_output:str) -> bool: #Take in everything and see if it creates a image, Maybe take input files? 
@@ -1547,7 +1564,8 @@ class OutputVisualizer(ProblemPart):
 
                 for vis in self._actual_visualizers():
                     if vis.compile()[0]:
-
+                        tempimage = vis.run(submission_output,
+                        args =[testcase.infile])
                         #lot of code
 
 
