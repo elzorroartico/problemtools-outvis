@@ -1536,19 +1536,19 @@ class OutputVisualizer(ProblemPart):
                 #TODO Run the visualiser
                 if flag in flags:
                     save_image = True
+                    path = "" # fix path to right place TODO
+                    visualisedir = tempfile.mkdtemp(dir=path)
 
                 for vis in self._actual_visualizers():
                     if vis.compile()[0]:
 
                         #lot of code
 
+
+                        #TODO Check the byte file
+
                         if save_image:
                             #add to tmpdir
-
-
-                #TODO Check the byte file
-
-                #TODO save it if flag is given
 
 
 
