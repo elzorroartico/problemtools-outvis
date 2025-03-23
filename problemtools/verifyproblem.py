@@ -1471,6 +1471,7 @@ class OutputValidators(ProblemPart):
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
 
+    _default_visualizer = run.get_tool('default_validator') #Should probably not exist? TODO
   
     #TODO fix setup
    def setup(self): #Stolen from outputVal
@@ -1497,7 +1498,35 @@ class OutputVisualizer(ProblemPart):
             return self._check_res
         self._check_res = True
 
-        if self.problem.get(ProblemConfig)['OutputVisualizers'] 
+        #Ingen check för om det är default då det inte finns någon default
+        if self.problem.get(ProblemConfig)['visualizers'] != 'none' and not self._visualizers:
+            self.error('problem.yaml specifies custom Output visualizer but no validator programs found')
+
+        # if self.problem.config(ProblemConfig)['visualizers'] == 'none' and self._default_visualizer is None:
+
+        #BELOW FROM OUTPUTVAL TODO
+        fd, file_name = tempfile.mkstemp()
+            os.close(fd)
+            for (desc, case) in _JUNK_CASES:
+                f = open(file_name, "wb")
+                f.write(case)
+                f.close()
+                rejected = False
+                for testcase in self.problem.get(ProblemTestCases)['root_group'].get_all_testcases():
+                    result = self.visualize(testcase, file_name)
+                    if result.verdict != 'AC':
+                        rejected = True
+                    if result.verdict == 'JE':
+                        self.error(f'{desc} as output, and output validator flags "{" ".join(flags)}" gave {result}')
+                        break
+                if not rejected:
+                    self.warning(f'{desc} gets AC')
+            os.unlink(file_name)
+
+
+            def visualize(self, testcase: TestCase, submission_output:str) -> bool: #Take in everything and see if it creates a image
+                res = False
+                
 
 
 class Runner:
