@@ -1511,16 +1511,16 @@ class OutputVisualizer(ProblemPart):
 
         #BELOW FROM OUTPUTVAL TODO
         fd, file_name = tempfile.mkstemp()
-            os.close(fd)
-            for (desc, case) in _JUNK_CASES:
-                f = open(file_name, "wb")
-                f.write(case)
-                f.close()
-                rejected = False
-                for testcase in self.problem.get(ProblemTestCases)['root_group'].get_all_testcases():
-                    result = self.visualize(testcase, file_name)
-                    if result.verdict != 'AC':
-                        rejected = True
+        os.close(fd)
+        for (desc, case) in _JUNK_CASES:
+            f = open(file_name, "wb")
+            f.write(case)
+            f.close()
+            rejected = False
+            for testcase in self.problem.get(ProblemTestCases)['root_group'].get_all_testcases():
+                result = self.visualize(testcase, file_name)
+                if result.verdict != 'AC':
+                    rejected = True
                     if result.verdict == 'JE':
                         self.error(f'{desc} as output, and output validator flags "{" ".join(flags)}" gave {result}')
                         break
@@ -1533,42 +1533,41 @@ class OutputVisualizer(ProblemPart):
     #b"FF D8 FF E0",
     #b"FF D8 FF D9"
     def check_image_type(file) -> bool:
-    permitted_filetypes = [
+        permitted_filetypes = [
         b"\x89PNG\r\n\x1A\n", 
         b"\xFF\xD8\xFF\xE0", 
         b"\xFF\xD8\xFF\xD9"
     ]
-    with open(file, "rb") as f:
-        file_signature = f.read(8)
+        with open(file, "rb") as f:
+            file_signature = f.read(8)
 
-    return any(file_signature.startswith(ft) for ft in permitted_filetypes)
+        return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
 
      #TODO actual visualizer
 
-    def visualize(self, testcase: TestCase, submission_output:str) -> bool: #maybe should retunr logs instead?
-        res = False
+    def visualize(self, testcase: TestCase, submission_output:str) -> [bool]: #maybe should retunr logs instead?
+        res = []
         flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
         save_image = False
-        #TODO get input files
-                
 
-                #TODO flag does not exist. Get it from calling output Vis
+        #TODO flag does not exist. Get it from calling output Vis
         if flag in flags:
             save_image = True
             path = "" # fix path to right place TODO
             visualisedir = tempfile.mkdtemp(dir=path)
 
-            if self._actual_visualizer().compile()[0]:
-                tempimage = vis.run(submission_output,
-                args =[testcase.infile])
+        if self._actual_visualizer().compile()[0]:
+            tempimage = vis.run(submission_output,
+            args =[testcase.infile])
                  #lot of code
-                check_image_type(tempimage)
+            res.append(check_image_type(tempimage))
 
                 #TODO Check the byte file
 
-                if save_image:
+            if save_image:
                 #add to tmpdir
+        return res
 
 
 
