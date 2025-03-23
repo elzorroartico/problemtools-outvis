@@ -1493,8 +1493,8 @@ class OutputVisualizer(ProblemPart):
     #     if self.problem.get(ProblemConfig)['visualizer'] == 'none': 
     #         visuals = ['none'] #Change to variable _none_visualizer? 
     #         return [visuals for vis in visuals if vis is not None]
-    def create_folder(problem_name, judge_image, submission_name):
-        default_path = Path(self.problem.get(__name__) + "/"+ f"{judge_image}" + "/"+ f"{submission_name}")
+    def create_folder(judge_image_name, submission_name):
+        default_path = Path(self.problem.get(__name__) + "/"+ f"{judge_image_name}" + "/"+ f"{submission_name}")
         os.mkdir(default_path)
 
 
@@ -1557,9 +1557,10 @@ class OutputVisualizer(ProblemPart):
         #TODO flag does not exist. Get it from calling output Vis
         if flag in flags:
             save_image = True
-            path = "" # fix path to right place TODO
-            visualisedir = tempfile.mkdtemp(dir=path)
-
+            judge_image_name = ""
+            submission_name = ""
+            self.create_folder(judge_image_name, submission_name)
+            
         if self._visualizer().compile()[0]: 
             tempimage = self._visualizer.run(submission_output,
             args =[testcase.infile])
