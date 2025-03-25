@@ -358,7 +358,7 @@ class TestCase(ProblemAspect):
                 
                 print(outfile, "\ntror här")
                 
-                global fulspara
+                global fulspara #TODO
                 fulspara = outfile
             res_high.runtime = runtime
 
@@ -1505,10 +1505,10 @@ class OutputValidators(ProblemPart):
                 if visualizer:
                     print("SHEESH")
                     visualizer.visualize(feedbackdir, testcase, submission_output)
+                    print("WE DID IT ", feedbackdir, "SUB OUTPUT", submission_output)
                 else:
-                    print("this is so sad put on the song")
-                shutil.rmtree(feedbackdir)
-                shutil.rmtree(validator_output)
+                    shutil.rmtree(feedbackdir)
+                    shutil.rmtree(validator_output)
                 if res.verdict != 'AC':
                     return res
 
@@ -1552,29 +1552,18 @@ class OutputVisualizer(ProblemPart):
             return self._check_res
         self._check_res = True
 
-        #Ingen check för om det är default då det inte finns någon default #TODO felhantering
-        # if self.problem.get(ProblemConfig)['visualizers'] != '' and not self._visualizer:
-        #     self.error('problem.yaml specifies custom Output visualizer but no validator programs found')
-        #print(" TIME TO SHOW THIS MF")
-        #res = self.visualize(fulspara, "") #TODO get submission output 
-        #res = self.visualize( context) #TODO get submission output 
-        #print(" WOOOOO IT CHECKED")
-        #print("it got: ", res)
-
        
-
-    #b"89 50 4E 47 0D 0A 1A 0A", file signatures in hex code
-    #b"FF D8 FF E0",
-    #b"FF D8 FF D9"
+    # file signatures in hex code
+    
     def check_image_type(self, file) -> bool: #TODO svg support
-        print("\n Jag gillar båtar\n")
+        print("\n Jag gillar båtar\n", file)
         permitted_filetypes = [
-        b"\x89PNG\r\n\x1A\n", 
-        b"\xFF\xD8\xFF\xE0", 
-        b"\xFF\xD8\xFF\xD9"    ]
+        b"89 50 4E 47 0D 0A 1A 0A", 
+    b"FF D8 FF E0",
+    b"FF D8 FF D9"   ]
 
         with open(file, "rb") as f:
-            print(f.read(8))
+            print('file sign',f.read(8))
             file_signature = f.read(8)
 
         return any(file_signature.startswith(ft) for ft in permitted_filetypes)
@@ -1582,14 +1571,14 @@ class OutputVisualizer(ProblemPart):
 
      #TODO actual visualizer
 
-    #def visualize(self, testcase: TestCase, submission_output:str) -> [bool]: #maybe should retunr logs instead?
-    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> None:
+    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> [bool]:
+        res = []
         if not self._visualizer:
             self.warning("No visualizer found.")
             return
         
         visualizer = self._visualizer[0] # use the first
-        print("VISUALIZER", visualizer)
+        print("VISUALIZER1", visualizer)
         visualizer_args = [testcase.ansfile, feedback_dir]
         print(submission_output, visualizer_args)
         temparg = [submission_output, feedback_dir]
@@ -1600,15 +1589,14 @@ class OutputVisualizer(ProblemPart):
         except Exception as e:
             self.warning(f'Error running output visualizer: {e}')
         
-        #for file in glob.glob(feedback_dir + "/*"):
-        #    with open(file, "r") as f:
-        #        print(f.read())
+        #TODO CALL check_image here
 
+        for file in glob.glob(feedback_dir + "/*"):
+           print("THIS IS A THINGY ", file)
+           with open(file, "r") as f:
+               res.append(self.check_image_type(file))
+               print("This is image check: ",res)
 
-        # res = []
-        # #flags = self.problem.get(ProblemConfig)['output_visualizer_flags'].split()
-
-        # #TODO flag does not exist. Get it from calling output Vis
         # if context.save_output_visualizer_images:
         #     print(" INGGG`WE ARE VSAVING")
     
