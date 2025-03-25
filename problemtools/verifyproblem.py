@@ -367,10 +367,20 @@ class TestCase(ProblemAspect):
         res_high.set_ac_runtime()
 
         if True:
-            os.getcwd()    
-            visualizer_path = '/output_visualizer'
-            tempdir = tempfile.TemporaryDirectory(dir=visualizer_path)
-            print(tempdir)
+            visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
+            visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
+            tempfile.TemporaryDirectory(dir=visualizer_path)
+            ansfiles = tempfile.TemporaryFile(dir=visualizer_path, mode='w')
+            with open(sub.outfile, 'r') as infile, open(ansfiles, 'w') as outfile:
+                lines = infile.readlines()
+                for line in lines:
+                    outfile.write(line)
+
+            # with open(ansfile, 'w') as f:
+            #     lines = f.readlines()
+            #     for line in ansfile:
+            #         f.write(input())
+                
             # os.makedirs(os.path.dirname(visualizer_path), exist_ok=True)
             # sub.ansfile
 
