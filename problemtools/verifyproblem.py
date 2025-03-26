@@ -391,7 +391,7 @@ class TestCase(ProblemAspect):
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
             tempfile.TemporaryDirectory(dir=visualizer_path)
-            ansfiles = tempfile.TemporaryFile(dir=visualizer_path, mode='w')
+            # ansfiles = tempfile.TemporaryFile(dir=visualizer_path, mode='w')
             # with open(sub.outfile, 'r') as infile, open(ansfiles, 'w') as outfile:
             #     lines = infile.readlines()
             #     for line in lines:
@@ -1501,11 +1501,11 @@ class OutputValidators(ProblemPart):
                         self.info("Failed to read validator output: %s", e)
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
                 
-                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)
+                #Gets the visualizer and if it exits runs the program. Otherwise closes the temporary folder.
+                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
                 if visualizer:
-                    print("SHEESH")
                     visualizer.visualize(feedbackdir, testcase, submission_output)
-                    print("WE DID IT ", feedbackdir, "SUB OUTPUT", submission_output)
+                    print("MADE AN IMAGE " , feedbackdir, "\n", testcase, "\n", submission_output)
                 else:
                     shutil.rmtree(feedbackdir)
                     shutil.rmtree(validator_output)
@@ -1589,12 +1589,15 @@ class OutputVisualizer(ProblemPart):
             self.warning(f'Error running output visualizer: {e}')
         
         #TODO CALL check_image here
-
+        print("wow a dir ", glob.glob(feedback_dir + "/*"))
+        it = 0
         for file in glob.glob(feedback_dir + "/*"):
-           print("THIS IS A THINGY ", file)
+           it = it +1
+           print("THIS IS A THINGY ", file, "iteration ", it )
            with open(file, "r") as f:
                res.append(self.check_image_type(file))
-               print("This is image check: ",res)
+        print("Visualizer: ", self._visualizer[0])
+        print("This is image check: ",res)
 
         # if context.save_output_visualizer_images:
         #     print(" INGGG`WE ARE VSAVING")
