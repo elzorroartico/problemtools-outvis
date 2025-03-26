@@ -1505,7 +1505,7 @@ class OutputValidators(ProblemPart):
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
                 if visualizer:
                     visualizer.visualize(feedbackdir, testcase, submission_output)
-                    print("MADE AN IMAGE " , feedbackdir, "\n", testcase, "\n", submission_output)
+                    print("MADE AN IMAGE " , visualizer)
                 else:
                     shutil.rmtree(feedbackdir)
                     shutil.rmtree(validator_output)
@@ -1572,8 +1572,9 @@ class OutputVisualizer(ProblemPart):
 
      #TODO actual visualizer
 
-    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> [bool]:
+    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> None:
         res = []
+        print("YO")
         if not self._visualizer:
             self.warning("No visualizer found.")
             return
@@ -1592,13 +1593,11 @@ class OutputVisualizer(ProblemPart):
         print("wow a dir ", glob.glob(feedback_dir + "/*"))
         it = 0
         for file in glob.glob(feedback_dir + "/*"):
-           it = it +1
-           print("THIS IS A THINGY ", file, "iteration ", it )
            with open(file, "r") as f:
                res.append(self.check_image_type(file))
-        print("Visualizer: ", self._visualizer[0])
-        print("This is image check: ",res)
-
+        
+        if False in res:
+            self.warning("The visualizer did not generate an image")
         # if context.save_output_visualizer_images:
         #     print(" INGGG`WE ARE VSAVING")
     
