@@ -387,7 +387,7 @@ class TestCase(ProblemAspect):
 
 
 
-        if True:
+        if context.save_output_visualizer_images:
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
             tempfile.TemporaryDirectory(dir=visualizer_path)
@@ -1528,7 +1528,7 @@ class OutputVisualizer(ProblemPart):
         self._has_precompiled = False
         # _ans_file = os.path('/data')
         
-    def __str__(self) -> str: #nödvändigt?
+    def __str__(self) -> str: 
         return 'output visualizer'
 
     #From superclass, find out what it does
@@ -1541,6 +1541,7 @@ class OutputVisualizer(ProblemPart):
 
     def create_folder(self, judge_image_name, submission_name): # self.problem.get(__name__)
         default_path = Path(os.path.join('/home/elzo/outputVis/problemtools-outvis/examples/different/output_visualizer/', judge_image_name, submission_name))
+        print("Oh hi mark")
         if not os.path.exists(default_path):
             os.mkdir(default_path)
 
@@ -1559,8 +1560,8 @@ class OutputVisualizer(ProblemPart):
         print("\n Jag gillar båtar\n", file)
         permitted_filetypes = [
         b"89 50 4E 47 0D 0A 1A 0A", 
-    b"FF D8 FF E0",
-    b"FF D8 FF D9"   ]
+        b"FF D8 FF E0",
+        b"FF D8 FF D9"]
 
         with open(file, "rb") as f:
             print('file sign',f.read(8))
@@ -1578,9 +1579,7 @@ class OutputVisualizer(ProblemPart):
             return
         
         visualizer = self._visualizer[0] # use the first
-        print("VISUALIZER1", visualizer)
         visualizer_args = [testcase.ansfile, feedback_dir]
-        print(submission_output, visualizer_args)
         temparg = [submission_output, feedback_dir]
         try:
             status, runtime = visualizer.run(args=temparg)#submission_output, feedback_dir)#args=visualizer_args)
@@ -2079,8 +2078,8 @@ def argparser_basic_arguments(parser: argparse.ArgumentParser) -> None:
                         help='which problem format should the package be interpreted as, or "automatic" if it should be figured out from problem.yaml')
 
     parser.add_argument('-sv', '--save_visualizer',
-                        type=bool,
-                        default=False,
+                        #type=bool,
+                        action='store_true',
                         help="Pass to save visualizer outputs to disk")
 
 def argparser() -> argparse.ArgumentParser:
