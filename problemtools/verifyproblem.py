@@ -1557,16 +1557,15 @@ class OutputVisualizer(ProblemPart):
     # file signatures in hex code
     
     def check_image_type(self, file) -> bool: #TODO svg support
-        print("\n Jag gillar båtar\n", file)
+        
         permitted_filetypes = [
-        b"89 50 4E 47 0D 0A 1A 0A", 
-        b"FF D8 FF E0",
-        b"FF D8 FF D9"]
+        b'\x89PNG\r\n\x1a\n',  # PNG magic number
+        b'\xFF\xD8\xFF\xE0',    # JPEG magic number (JFIF)
+        b'\xFF\xD8\xFF\xE1'     # JPEG magic number (Exif)
+        ]
 
         with open(file, "rb") as f:
-            print('file sign',f.read(8))
             file_signature = f.read(8)
-
         return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
 
@@ -1590,40 +1589,14 @@ class OutputVisualizer(ProblemPart):
             self.warning(f'Error running output visualizer: {e}')
         
         #TODO CALL check_image here
-        print("wow a dir ", glob.glob(feedback_dir + "/*"))
-        it = 0
         for file in glob.glob(feedback_dir + "/*"):
            with open(file, "r") as f:
                res.append(self.check_image_type(file))
         
-        if False in res:
+        #Raises a warning if the file signature is wrong or the list is empty
+        if True not in res:
             self.warning("The visualizer did not generate an image")
-        # if context.save_output_visualizer_images:
-        #     print(" INGGG`WE ARE VSAVING")
-    
-        #     judge_image_name = ""
-        #     submission_name = ""
-        #     self.create_folder(judge_image_name, submission_name)
-        # print(self._visualizer[0], "whatt är den tom för ")
-        # if self._visualizer[0].compile(): 
-        #     print("wooooooOWWWW OASJDOIASJDOIJASOIDJ")
-        #     global fulspara
-        #     print(" path sak", fulspara)
-            
-        #     # skicka in fulspara, dock fulspara är tom
-        #     #tempimage = self._visualizer[0].run(fulspara) # calla rätt #Loop på alla case :)
-
-        #     #with open(fulspara, "r", encoding="utf-8") as f: tempfilhanterar klass
-        #     #    tempimage = f.read()
-            
-            
-
-
-        #     # args =[testcase.infile]
-        #          #lot of code
-        #     res.append(self.check_image_type(fulspara))
-                
-        #return res
+       
     
 
 
