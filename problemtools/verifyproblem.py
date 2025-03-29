@@ -1558,22 +1558,22 @@ class OutputVisualizer(ProblemPart):
     
     def check_image_type(self, file) -> bool: #TODO svg support
         
-        permitted_filetypes = [
-        b'\x89PNG\r\n\x1a\n',  # PNG magic number
-        b'\xFF\xD8\xFF\xE0',    # JPEG magic number (JFIF)
-        b'\xFF\xD8\xFF\xE1'     # JPEG magic number (Exif)
-        ]
+        permitted_filetypes = {
+        b'\x89PNG\r\n\x1a\n': 8,  # PNG magic number
+        b'\xFF\xD8\xFF\xE0': 4,    # JPEG magic number (JFIF)
+        b'\xFF\xD8\xFF\xE1': 4,     # JPEG magic number (Exif)
+        }
 
+        bytes_to_read = max(permitted_filetypes.values())
         with open(file, "rb") as f:
-            file_signature = f.read(8)
-        return any(file_signature.startswith(ft) for ft in permitted_filetypes)
-
+            file_signature = f.read(bytes_to_read)
+            print("here buivko ", bytes_to_read)
+        return any(file_signature.startswith(ft[:len(file_signature)]) for ft in permitted_filetypes)
 
      #TODO actual visualizer
 
     def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> None:
         res = []
-        print("YO")
         if not self._visualizer:
             self.warning("No visualizer found.")
             return
@@ -1591,11 +1591,12 @@ class OutputVisualizer(ProblemPart):
         #TODO CALL check_image here
         for file in glob.glob(feedback_dir + "/*"):
            with open(file, "r") as f:
+               print("File for image is: ", file)
                res.append(self.check_image_type(file))
         
         #Raises a warning if the file signature is wrong or the list is empty
         if True not in res:
-            self.warning("The visualizer did not generate an image")
+            self.warning("The visualizer did not generate an allowed image")
        
     
 
