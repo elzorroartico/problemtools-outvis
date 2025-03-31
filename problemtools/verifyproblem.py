@@ -382,11 +382,10 @@ class TestCase(ProblemAspect):
 
 
 
-        if context.save_output_visualizer_images:
+        if context.save_output_visualizer_images: #Does nothing?
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
             tempfile.TemporaryDirectory(dir=visualizer_path)
-            print("tjuna")
 
         return (res, res_low, res_high)
 
@@ -1499,6 +1498,7 @@ class OutputValidators(ProblemPart):
 
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
+
     def setup(self):       
         self._visualizer = run.find_programs(os.path.join(self.problem.probdir,'output_visualizer'), 
         work_dir=self.problem.tmpdir,
@@ -1508,26 +1508,16 @@ class OutputVisualizer(ProblemPart):
     def __str__(self) -> str: 
         return 'output visualizer'
 
-    #From superclass, find out what it does
+    #Does an early compilatilation of the visualizer
     def start_background_work(self, context: Context) -> None:
         if not self._has_precompiled:
-            #for vis in self._actual_visualizer(): #Create in setup? 
-            context.submit_background_work(lambda v: v.compile(), self._visualizer) #TODO make sure it works with background_work
+            context.submit_background_work(lambda v: v.compile(), self._visualizer)
             self._has_precompiled = True
         
-
-    # def create_folder(self, judge_image_name, submission_name): # not used TODO
-    #     default_path = Path(os.path.join('/home/elzo/outputVis/problemtools-outvis/examples/different/output_visualizer/', judge_image_name, submission_name))
-    #     print("Oh hi mark")
-    #     if not os.path.exists(default_path):
-    #         os.mkdir(default_path)
-
-
     def check(self, context: Context) -> bool: 
         if self._check_res is not None:
             return self._check_res
         self._check_res = True
-
 
     
     def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
@@ -1553,17 +1543,19 @@ class OutputVisualizer(ProblemPart):
             file_signature = f.read(8)
         return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
-
-    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> None:
+    
+    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str):
         res = []
-        if not self._visualizer:
+        if not self._visualizer: 
             self.warning("No visualizer found.")
             return
         
-        visualizer = self._visualizer[0] 
+        visualizer = self._visualizer[0] #Selects the visualizer 
         temparg = [submission_output, feedback_dir]
+
+        #Tries to run the visualzier
         try:
-            status, runtime = visualizer.run(args=temparg)#submission_output, feedback_dir)#args=visualizer_args)
+            status, runtime = visualizer.run(args=temparg)
             if status != 0:
                 self.warning(f'The output visualizer crashed, status: {status}')
         except Exception as e:
