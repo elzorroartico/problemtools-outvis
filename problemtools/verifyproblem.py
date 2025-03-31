@@ -387,19 +387,6 @@ class TestCase(ProblemAspect):
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
             tempfile.TemporaryDirectory(dir=visualizer_path)
             print("tjuna")
-            # ansfiles = tempfile.TemporaryFile(dir=visualizer_path, mode='w')
-            # with open(sub.outfile, 'r') as infile, open(ansfiles, 'w') as outfile:
-            #     lines = infile.readlines()
-            #     for line in lines:
-            #         outfile.write(line)
-
-            # with open(ansfile, 'w') as f:
-            #     lines = f.readlines()
-            #     for line in ansfile:
-            #         f.write(input())
-                
-            # os.makedirs(os.path.dirname(visualizer_path), exist_ok=True)
-            # sub.ansfile
 
         return (res, res_low, res_high)
 
@@ -1529,11 +1516,11 @@ class OutputVisualizer(ProblemPart):
             self._has_precompiled = True
         
 
-    def create_folder(self, judge_image_name, submission_name): # not used TODO
-        default_path = Path(os.path.join('/home/elzo/outputVis/problemtools-outvis/examples/different/output_visualizer/', judge_image_name, submission_name))
-        print("Oh hi mark")
-        if not os.path.exists(default_path):
-            os.mkdir(default_path)
+    # def create_folder(self, judge_image_name, submission_name): # not used TODO
+    #     default_path = Path(os.path.join('/home/elzo/outputVis/problemtools-outvis/examples/different/output_visualizer/', judge_image_name, submission_name))
+    #     print("Oh hi mark")
+    #     if not os.path.exists(default_path):
+    #         os.mkdir(default_path)
 
 
     def check(self, context: Context) -> bool: 
@@ -1564,7 +1551,6 @@ class OutputVisualizer(ProblemPart):
         #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
         with open(file, "rb") as f:
             file_signature = f.read(8)
-            print("file sign:" , file_signature)
         return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
 
@@ -1974,15 +1960,7 @@ class Problem(ProblemAspect):
                 for item in self.part_mapping[part]:
                     print(" check", item.PART_NAME, "CHECK ORDER")
                     self.classes[item.PART_NAME].check(context)
-            print("i have sigma")
-            for file in glob.glob(self.tmpdir + "/output-*"):
-                with open(file, "r", encoding="utf-8") as f:
-                   print("read the goddamnds OUTPUT", file)
-                   print(f.read())
-            for file in glob.glob(self.tmpdir + "/error-*"):
-                with open(file, "r", encoding="utf-8") as f:
-                   print("read the goddamnds ERROR", file)
-                   print(f.read())
+
         except VerifyError:
             pass
         finally:
