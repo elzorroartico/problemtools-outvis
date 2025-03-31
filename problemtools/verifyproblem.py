@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 import threading
 import queue
 import glob
@@ -39,8 +38,6 @@ from typing import Any, Callable, Literal, Pattern, Match, ParamSpec, TypeVar
 log = logging.getLogger(__name__)
 
 Verdict = Literal['AC', 'TLE', 'OLE', 'MLE', 'RTE', 'WA', 'PAC', 'JE']
-
-
 
 def is_TLE(status: int, may_signal_with_usr1: bool=False) -> bool:
     return (os.WIFSIGNALED(status) and
@@ -335,12 +332,8 @@ class TestCase(ProblemAspect):
             status, runtime = sub.run(infile=self.infile, outfile=outfile, errfile=errfile,
                                       timelim=timelim_high+1,
                                       memlim=self._problem.get(ProblemConfig)['limits']['memory'], work_dir=sub.path)
-
-            with open(outfile, 'r') as f:
-                print(f.read())
             if is_TLE(status) or runtime > timelim_high:
                 res_high = SubmissionResult('TLE')
-                print(outfile, "\nTLE")
             elif is_RTE(status):
                 try:
                     with open(errfile, mode="rt") as f:
@@ -349,11 +342,9 @@ class TestCase(ProblemAspect):
                     self.info("Failed to read error file %s", errfile)
                     info = None
                 res_high = SubmissionResult('RTE', additional_info=info)
-                print(outfile, "\nRTE")
             else:
                 res_high = self._problem.classes[OutputValidators.PART_NAME].validate(self, outfile)
-                
-                print(outfile, "\ntror här")
+
                 
             res_high.runtime = runtime
 
@@ -379,8 +370,6 @@ class TestCase(ProblemAspect):
         res.set_ac_runtime()
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
-
-
 
         if context.save_output_visualizer_images: #Does nothing?
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
@@ -1496,7 +1485,8 @@ class OutputValidators(ProblemPart):
         # TODO: check that all output validators give same result
         return res
 
-class OutputVisualizer(ProblemPart):
+    #Class for handeling Output Visualizers
+class OutputVisualizer(ProblemPart): 
     PART_NAME = 'output_visualizer'
 
     def setup(self):       
@@ -1840,7 +1830,7 @@ PROBLEM_FORMATS = {
         'graders':      [Graders],
         'data':         [ProblemTestCases],
         'submissions':  [Submissions],
-         'visualizers': [OutputVisualizer] #TODO temporary for running tests
+        'visualizers': [OutputVisualizer] #TODO temporary for running tests
 
     },
     '2023-07': { # TODO: Add all the parts
@@ -1902,7 +1892,6 @@ class Problem(ProblemAspect):
                 if cnt != 1:
                     raise NotImplementedError(f'Part "{_class.PART_NAME}" depends on part "{dependency.PART_NAME}" which showed up {cnt} times in problem-format (should have showed up exactly once)')
             self.debug(f'Initializing {_class.PART_NAME} ({_class})')
-            print("start make now", _class.PART_NAME)
             assert _class.PART_NAME not in initialized
             self.classes[_class.PART_NAME] = _class(self)
             self._data[_class.PART_NAME] = self.classes[_class.PART_NAME].setup()
@@ -1950,7 +1939,6 @@ class Problem(ProblemAspect):
             for part in parts:
                 self.msg(f'Checking {part}')
                 for item in self.part_mapping[part]:
-                    print(" check", item.PART_NAME, "CHECK ORDER")
                     self.classes[item.PART_NAME].check(context)
 
         except VerifyError:
