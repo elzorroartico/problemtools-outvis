@@ -1558,17 +1558,22 @@ class OutputVisualizer(ProblemPart):
     
     def check_image_type(self, file) -> bool: #TODO svg support
         
-        permitted_filetypes = {
-        b'\x89PNG\r\n\x1a\n': 8,  # PNG magic number
-        b'\xFF\xD8\xFF\xE0': 4,    # JPEG magic number (JFIF)
-        b'\xFF\xD8\xFF\xE1': 4,     # JPEG magic number (Exif)
-        }
+        permitted_filetypes = [
+        b'\x89PNG\r\n\x1a\n',  # PNG magic number
+        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG magic number 
+        b'\xFF\xD8\xFF'    # JPG magic number 
+        ]
 
-        bytes_to_read = max(permitted_filetypes.values())
+        first_line = file.readline().strip()
+        if first_line.startswith('<?xml') and '<svg' in file.read(500):  # Check the header and SVG tag
+                return True
+
+        # bytes_to_read = max(permitted_filetypes.values())
         with open(file, "rb") as f:
-            file_signature = f.read(bytes_to_read)
-            print("here buivko ", bytes_to_read)
-        return any(file_signature.startswith(ft[:len(file_signature)]) for ft in permitted_filetypes)
+            file_signature = f.read(8)
+            print("file sign:" , file_signature)
+            # print("here buivko ", bytes_to_read)
+        return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
      #TODO actual visualizer
 
@@ -1596,6 +1601,7 @@ class OutputVisualizer(ProblemPart):
         
         #Raises a warning if the file signature is wrong or the list is empty
         if True not in res:
+            print("this is res" , res)
             self.warning("The visualizer did not generate an allowed image")
        
     
