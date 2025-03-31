@@ -40,7 +40,6 @@ log = logging.getLogger(__name__)
 
 Verdict = Literal['AC', 'TLE', 'OLE', 'MLE', 'RTE', 'WA', 'PAC', 'JE']
 
-fulspara = None
 
 
 def is_TLE(status: int, may_signal_with_usr1: bool=False) -> bool:
@@ -331,14 +330,12 @@ class TestCase(ProblemAspect):
         if self._problem.get(ProblemTestCases)['is_interactive']:
             res_high = self._problem.classes[OutputValidators.PART_NAME].validate_interactive(self, sub, timelim_high, self._problem.classes[Submissions.PART_NAME])
         else:
-            print("Cool kommentar")
             outfile = os.path.join(self._problem.tmpdir, f'output-{self.counter}')
             errfile = os.path.join(self._problem.tmpdir, f'error-{self.counter}')
             status, runtime = sub.run(infile=self.infile, outfile=outfile, errfile=errfile,
                                       timelim=timelim_high+1,
                                       memlim=self._problem.get(ProblemConfig)['limits']['memory'], work_dir=sub.path)
-            print("sökbar", outfile)
-            print(status, "SNÄLLA VA 15 (inte år gammal)")
+
             with open(outfile, 'r') as f:
                 print(f.read())
             if is_TLE(status) or runtime > timelim_high:
@@ -358,8 +355,6 @@ class TestCase(ProblemAspect):
                 
                 print(outfile, "\ntror här")
                 
-                global fulspara #TODO
-                fulspara = outfile
             res_high.runtime = runtime
 
 
@@ -391,6 +386,7 @@ class TestCase(ProblemAspect):
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
             tempfile.TemporaryDirectory(dir=visualizer_path)
+            print("tjuna")
             # ansfiles = tempfile.TemporaryFile(dir=visualizer_path, mode='w')
             # with open(sub.outfile, 'r') as infile, open(ansfiles, 'w') as outfile:
             #     lines = infile.readlines()
@@ -1505,7 +1501,6 @@ class OutputValidators(ProblemPart):
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
                 if visualizer:
                     visualizer.visualize(feedbackdir, testcase, submission_output)
-                    print("MADE AN IMAGE " , visualizer)
                 else:
                     shutil.rmtree(feedbackdir)
                     shutil.rmtree(validator_output)
@@ -1517,16 +1512,11 @@ class OutputValidators(ProblemPart):
 
 class OutputVisualizer(ProblemPart):
     PART_NAME = 'output_visualizer'
-    def setup(self): #find output_vis
-        print("AIDS", os.path.join(self.problem.probdir,'output_visualizer'))
-        print(self.problem.language_config.languages)
-        
+    def setup(self):       
         self._visualizer = run.find_programs(os.path.join(self.problem.probdir,'output_visualizer'), 
         work_dir=self.problem.tmpdir,
         language_config=self.problem.language_config)
-        print(self._visualizer)
         self._has_precompiled = False
-        # _ans_file = os.path('/data')
         
     def __str__(self) -> str: 
         return 'output visualizer'
@@ -1539,24 +1529,21 @@ class OutputVisualizer(ProblemPart):
             self._has_precompiled = True
         
 
-    def create_folder(self, judge_image_name, submission_name): # self.problem.get(__name__)
+    def create_folder(self, judge_image_name, submission_name): # not used TODO
         default_path = Path(os.path.join('/home/elzo/outputVis/problemtools-outvis/examples/different/output_visualizer/', judge_image_name, submission_name))
         print("Oh hi mark")
         if not os.path.exists(default_path):
             os.mkdir(default_path)
 
 
-    #Perform the check here
     def check(self, context: Context) -> bool: 
-        print(" GOT TO CHECK")
         if self._check_res is not None:
             return self._check_res
         self._check_res = True
 
-       
-    # file signatures in hex code
+
     
-    def check_image_type(self, file) -> bool: #TODO svg support
+    def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
         
         permitted_filetypes = [
         b'\x89PNG\r\n\x1a\n',  # PNG magic number
@@ -1564,18 +1551,22 @@ class OutputVisualizer(ProblemPart):
         b'\xFF\xD8\xFF'    # JPG magic number 
         ]
 
-        first_line = file.readline().strip()
-        if first_line.startswith('<?xml') and '<svg' in file.read(500):  # Check the header and SVG tag
+        #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                first_line = f.readline().strip()  
+                content = f.read(500)  
+            if first_line.startswith('<?xml') and '<svg' in content:
                 return True
+        except Exception as e:
+            self.warning(f"Error checking SVG: {e}")
 
-        # bytes_to_read = max(permitted_filetypes.values())
+        #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
         with open(file, "rb") as f:
             file_signature = f.read(8)
             print("file sign:" , file_signature)
-            # print("here buivko ", bytes_to_read)
         return any(file_signature.startswith(ft) for ft in permitted_filetypes)
 
-     #TODO actual visualizer
 
     def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str) -> None:
         res = []
@@ -1583,8 +1574,7 @@ class OutputVisualizer(ProblemPart):
             self.warning("No visualizer found.")
             return
         
-        visualizer = self._visualizer[0] # use the first
-        visualizer_args = [testcase.ansfile, feedback_dir]
+        visualizer = self._visualizer[0] 
         temparg = [submission_output, feedback_dir]
         try:
             status, runtime = visualizer.run(args=temparg)#submission_output, feedback_dir)#args=visualizer_args)
@@ -1593,15 +1583,13 @@ class OutputVisualizer(ProblemPart):
         except Exception as e:
             self.warning(f'Error running output visualizer: {e}')
         
-        #TODO CALL check_image here
+        #Runs the check for image type on all files in the feedback directory
         for file in glob.glob(feedback_dir + "/*"):
            with open(file, "r") as f:
-               print("File for image is: ", file)
                res.append(self.check_image_type(file))
         
         #Raises a warning if the file signature is wrong or the list is empty
         if True not in res:
-            print("this is res" , res)
             self.warning("The visualizer did not generate an allowed image")
        
     
