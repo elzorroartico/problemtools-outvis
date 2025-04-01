@@ -1511,6 +1511,7 @@ class OutputVisualizer(ProblemPart):
 
     
     def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
+        exists = False
         
         permitted_filetypes = [
         b'\x89PNG\r\n\x1a\n',  # PNG magic number
@@ -1518,6 +1519,12 @@ class OutputVisualizer(ProblemPart):
         b'\xFF\xD8\xFF'    # JPG magic number 
         ]
 
+        #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
+        with open(file, "rb") as f:
+            file_signature = f.read(8)
+        if any(file_signature.startswith(ft) for ft in permitted_filetypes):
+            return True
+    
         #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
         try:
             with open(file, 'r', encoding='utf-8') as f:
@@ -1528,16 +1535,12 @@ class OutputVisualizer(ProblemPart):
         except Exception as e:
             self.warning(f"Error checking SVG: {e}")
 
-        #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
-        with open(file, "rb") as f:
-            file_signature = f.read(8)
-        return any(file_signature.startswith(ft) for ft in permitted_filetypes)
-
     
     def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str):
         res = []
         if not self._visualizer: 
-            self.warning("No visualizer found.")
+            if self.warnings < 1:
+                self.warning(f'No visualizer found')
             return
         
         visualizer = self._visualizer[0] #Selects the visualizer 
@@ -1552,9 +1555,13 @@ class OutputVisualizer(ProblemPart):
             self.warning(f'Error running output visualizer: {e}')
         
         #Runs the check for image type on all files in the feedback directory
-        for file in glob.glob(feedback_dir + "/*"):
-           with open(file, "r") as f:
-               res.append(self.check_image_type(file))
+        file_endings = ["*.png", "*.jpg", ".jpeg", ".svg"]
+        for ending in file_endings:
+            print('here ', feedback_dir + ending)
+            for file in glob.glob(feedback_dir + "/*" + ending):
+                
+                with open(file, "r") as f:
+                    res.append(self.check_image_type(file))
         
         #Raises a warning if the file signature is wrong or the list is empty
         if True not in res:
