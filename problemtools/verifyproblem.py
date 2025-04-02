@@ -371,10 +371,7 @@ class TestCase(ProblemAspect):
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
 
-        if context.save_output_visualizer_images: #Does nothing?
-            visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
-            visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
-            tempfile.TemporaryDirectory(dir=visualizer_path)
+
 
         return (res, res_low, res_high)
 
@@ -1474,10 +1471,10 @@ class OutputValidators(ProblemPart):
                 
                 #Gets the visualizer and if it exits runs the program. Otherwise closes the temporary folder.
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
-                if visualizer:
+                if visualizer: #TODO rätt scope?
                     visualizer.visualize(feedbackdir, testcase, submission_output)
                 else:
-                    shutil.rmtree(feedbackdir)
+                    shutil.rmtree(feedbackdir) #TODO super fel plats ska alltid tas bort
                     shutil.rmtree(validator_output)
                 if res.verdict != 'AC':
                     return res
@@ -1494,7 +1491,11 @@ class OutputVisualizer(ProblemPart):
         work_dir=self.problem.tmpdir,
         language_config=self.problem.language_config)
         self._has_precompiled = False
+        self._correct_amount_visualizers = (len(self._visualizer) == 1)
         
+        self._has_warned_amount = True
+        self._missing_visualizer = False
+        #TODO borde should save finnas?
     def __str__(self) -> str: 
         return 'output visualizer'
 
@@ -1504,67 +1505,78 @@ class OutputVisualizer(ProblemPart):
             context.submit_background_work(lambda v: v.compile(), self._visualizer)
             self._has_precompiled = True
         
-    def check(self, context: Context) -> bool: 
+    def check(self, context: Context) -> bool: #TODO när körs den här? innan? Kolla dependencies kolla ordningen
         if self._check_res is not None:
             return self._check_res
         self._check_res = True
+        #TODO should save kanske här?
 
     
     def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
-        exists = False
-        
         permitted_filetypes = [
-        b'\x89PNG\r\n\x1a\n',  # PNG magic number
-        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG magic number 
-        b'\xFF\xD8\xFF'    # JPG magic number 
+        b'\x89PNG\r\n\x1a\n',  # PNG file header
+        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG file header
+        b'\xFF\xD8\xFF'    # JPG file header
         ]
+        simple_file_endings = ['.png','.jpg','.jpeg']
+        file_name = os.path.basename(file)
 
         #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
-        with open(file, "rb") as f:
-            file_signature = f.read(8)
-        if any(file_signature.startswith(ft) for ft in permitted_filetypes):
-            return True
-    
-        #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
-        try:
-            with open(file, 'r', encoding='utf-8') as f:
-                first_line = f.readline().strip()  
-                content = f.read(500)  
-            if first_line.startswith('<?xml') and '<svg' in content:
+        if any(file_name.endswith(end) for end in simple_file_endings):
+            with open(file, "rb") as f:
+                file_signature = f.read(8)
+            if any(file_signature.startswith(ft) for ft in permitted_filetypes):
                 return True
-        except Exception as e:
-            self.warning(f"Error checking SVG: {e}")
-
-    
-    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str):
+        elif file_name.endswith('.svg'):
+            try:
+                with open(file, 'r', encoding='utf-8') as f:
+                    content = f.read(256)          #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
+                if content.startswith('<?xml') and '<svg' in content:
+                    return True
+            except Exception as e:
+                self.warning(f"Error checking SVG: {e}")
+        else:
+            return False
+ 
+    def save_image(self, visualizer_path, file):
+            if context.save_output_visualizer_images: #Does nothing? #TODO hårdkodad som fan, gör om och ha den i visualizer. TIPS använd den gamlaha ett step out
+            
+            visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
+            visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
+            tempfile.TemporaryDirectory(dir=visualizer_path) #TODO inte tempp använd mkdir   
+            
+    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str): #TODO context istället för testcase för flaggan
         res = []
-        if not self._visualizer: 
-            if self.warnings < 1:
-                self.warning(f'No visualizer found')
+        if not self._visualizer and not self._missing_visualizer: 
+            self._missing_visualizer = True
+            self.warning('No visualizer found')
             return
         
-        visualizer = self._visualizer[0] #Selects the visualizer 
-        temparg = [submission_output, feedback_dir]
+        if self._correct_amount_visualizers: 
+            visualizer = self._visualizer[0] #Selects the visualizer 
+        else:
+            if self._has_warned_amount:
+                self._has_warned_amount = False
+                self.warning(f'Wrong amount of visualizer. \nExcpected: 1\nActual: {len(self._visualizer)}')
+            return
 
         #Tries to run the visualzier
         try:
-            status, runtime = visualizer.run(args=temparg)
+            status, runtime = visualizer.run(args=[submission_output, feedback_dir])
             if status != 0:
                 self.warning(f'The output visualizer crashed, status: {status}')
         except Exception as e:
             self.warning(f'Error running output visualizer: {e}')
         
         #Runs the check for image type on all files in the feedback directory
-        file_endings = ["*.png", "*.jpg", ".jpeg", ".svg"]
+        file_endings = [".png", ".jpg", ".jpeg", ".svg"]
         for ending in file_endings:
-            print('here ', feedback_dir + ending)
             for file in glob.glob(feedback_dir + "/*" + ending):
                 
-                with open(file, "r") as f:
-                    res.append(self.check_image_type(file))
+                    res.append(self.check_image_type(file)) #TODO kan vara att man sparar bilden if sats
         
         #Raises a warning if the file signature is wrong or the list is empty
-        if True not in res:
+        if not any(res):
             self.warning("The visualizer did not generate an allowed image")
        
     
