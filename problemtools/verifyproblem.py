@@ -1469,10 +1469,11 @@ class OutputValidators(ProblemPart):
 
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
                 
-                print("vis exist ", visualizer.visualizer_exists(), "vis? ", visualizer)
                 if visualizer.visualizer_exists(): #TODO rätt scope?
-                    shutil.copy(os.path.realpath(feedbackdir) , self.problem.tmpfeeddir)#TODO HITTA VAR JAG SKA LÄGGA
+                    randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) #All Ascii constans that aren't
                     print("Content ", os.listdir(self.problem.tmpfeeddir))
+
+                    shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpfeeddir, randomChars))#TODO HITTA VAR JAG SKA LÄGGA
                     visualizer.visualize(feedbackdir, submission_output) #TODO get context here?
                 else:
                     pass
@@ -1560,11 +1561,11 @@ class OutputVisualizer(ProblemPart):
                     
                 # default_path = Path(problemname + "/"+ f"{submission_name}" + "/"+ f"{testcase}/randomchars8st.extension")
                 # shutil.copytree(inFromProblemTmpDir, onDiskPermanentDir) #TODO lägg på rätt plats byt namn som du vill :)
-    def visualizer_exists(self):
+    def visualizer_exists(self)->bool:
         if not self._visualizer and not self._missing_visualizer: 
             self._missing_visualizer = True
             self.warning('No visualizer found')
-            return
+        return bool(self._visualizer)
                         
     def visualize(self, feedback_dir: str, submission_output: str): #TODO context istället för testcase för flaggan
         res = []
