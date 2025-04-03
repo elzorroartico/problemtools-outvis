@@ -1473,9 +1473,8 @@ class OutputValidators(ProblemPart):
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
                 if visualizer: #TODO rätt scope?
                     visualizer.visualize(feedbackdir, testcase, submission_output)
-                else:
-                    shutil.rmtree(feedbackdir) #TODO super fel plats ska alltid tas bort
-                    shutil.rmtree(validator_output)
+                shutil.rmtree(feedbackdir)
+                shutil.rmtree(validator_output)    
                 if res.verdict != 'AC':
                     return res
 
@@ -1495,6 +1494,7 @@ class OutputVisualizer(ProblemPart):
         
         self._has_warned_amount = True
         self._missing_visualizer = False
+        self._has_folder = False
         #TODO borde should save finnas?
     def __str__(self) -> str: 
         return 'output visualizer'
@@ -1538,14 +1538,15 @@ class OutputVisualizer(ProblemPart):
         else:
             return False
  
-    def save_image(self, visualizer_path, file):
-            if context.save_output_visualizer_images: #Does nothing? #TODO hårdkodad som fan, gör om och ha den i visualizer. TIPS använd den gamlaha ett step out
-            
+    def save_image(self, visualizer_path, file): #TODO get context
             visualizer_path = os.getcwd()    #TODO change below to problem name, use f-string
             visualizer_path = visualizer_path +'/examples/' + 'different'+ '/output_visualizer/'
-            tempfile.TemporaryDirectory(dir=visualizer_path) #TODO inte tempp använd mkdir   
-            
-    def visualize(self, feedback_dir: str, testcase: TestCase, submission_output: str): #TODO context istället för testcase för flaggan
+
+            if  self._has_folder: #Does nothing? #TODO hårdkodad som fan, gör om och ha den i visualizer. TIPS använd den gamlaha ett step out
+                self._has_folder = True
+                os.mkdir(visualizer_path, exists=True)
+            shutil.copy(file, visualizer_path)            
+    def visualize(self, feedback_dir: str, context: Context, submission_output: str): #TODO context istället för testcase för flaggan
         res = []
         if not self._visualizer and not self._missing_visualizer: 
             self._missing_visualizer = True
@@ -1572,8 +1573,8 @@ class OutputVisualizer(ProblemPart):
         file_endings = [".png", ".jpg", ".jpeg", ".svg"]
         for ending in file_endings:
             for file in glob.glob(feedback_dir + "/*" + ending):
-                
-                    res.append(self.check_image_type(file)) #TODO kan vara att man sparar bilden if sats
+                if context.save_output_visualizer_images and self.check_image_type(file):
+                    self.save_image(feedback_dir, file) #TODO kan vara att man sparar bilden if sats
         
         #Raises a warning if the file signature is wrong or the list is empty
         if not any(res):
