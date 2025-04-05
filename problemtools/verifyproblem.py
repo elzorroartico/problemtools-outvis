@@ -370,6 +370,19 @@ class TestCase(ProblemAspect):
         res.set_ac_runtime()
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
+        
+        visualizer = self._problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
+        print("WHERE ARE YTOU " , os.getcwd())
+        if visualizer.visualizer_exists():
+            print(" eh ", os.listdir(self._problem.tmpfeeddir))
+            for dir in os.listdir(self._problem.tmpfeeddir):
+                print("dir",dir)
+                for file in dir:
+                    print("Hi ", file, )
+                    if os.path.basename(file).endswith(".ans"):
+                        print("did it")
+                        visualizer.visualize(dir, file) 
+            # visualizer.visualize(feedbackdir, submission_output)
 
         return (res, res_low, res_high)
 
@@ -1467,16 +1480,13 @@ class OutputValidators(ProblemPart):
                         self.info("Failed to read validator output: %s", e)
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
 
-                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME) 
-                
+                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
                 if visualizer.visualizer_exists(): #TODO rätt scope?
-                    randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) #All Ascii constans that aren't
-                    print("Content ", os.listdir(self.problem.tmpfeeddir))
-
+                    randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) 
                     shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpfeeddir, randomChars))#TODO HITTA VAR JAG SKA LÄGGA
-                    visualizer.visualize(feedbackdir, submission_output) #TODO get context here?
-                else:
-                    pass
+                    shutil.copy(os.path.realpath(submission_output), os.path.join(self.problem.tmpfeeddir, randomChars))
+                    
+
                 shutil.rmtree(feedbackdir)
                 shutil.rmtree(validator_output)    
                 if res.verdict != 'AC':
@@ -1953,7 +1963,7 @@ class Problem(ProblemAspect):
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
         shutil.rmtree(self.tmpdir)
-        shutil.rmtree(self.tmpfeeddir)
+        # shutil.rmtree(self.tmpfeeddir)
 
     def __str__(self) -> str:
         return str(self.shortname)
