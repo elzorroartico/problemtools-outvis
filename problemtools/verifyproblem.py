@@ -377,8 +377,8 @@ class TestCase(ProblemAspect):
                 for file in os.listdir(os.path.join(self._problem.tmpdir,'Feedback',dir)):
                     file = os.path.join(self._problem.tmpdir,'Feedback',dir,file)
                     if file.endswith(".ans"):
-                        print("SSgg ", os.path.join(self._problem.tmpdir,'Feedback',dir))
-                        visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir))# TODO snygga till
+                        visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir), context)# TODO snygga till kan skicka med bara flaggan?
+
 
         return (res, res_low, res_high)
 
@@ -1458,7 +1458,6 @@ class OutputValidators(ProblemPart):
                 validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
                 outfile = validator_output + "/out.txt"
                 errfile = validator_output + "/err.txt"
-                print("sub out ", submission_output, "fdr ", feedbackdir, "\nin ", testcase.infile)
                 status, runtime = val.run(submission_output,
                                           args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
                                           timelim=val_timelim, memlim=val_memlim,
@@ -1503,7 +1502,7 @@ class OutputVisualizer(ProblemPart):
         self._has_precompiled = False
         self._correct_amount_visualizers = (len(self._visualizer) == 1)
 
-        
+        self.counter = 0
         self._has_warned_amount = True #TODO borde dessa finnas
         self._missing_visualizer = False
         self._has_created_folder = False
@@ -1532,7 +1531,7 @@ class OutputVisualizer(ProblemPart):
     def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
         permitted_filetypes = [
         b'\x89PNG\r\n\x1a\n',  # PNG file header
-        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG file header
+        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG file header #TODO this and jpg same?
         b'\xFF\xD8\xFF'    # JPG file header
         ]
         simple_file_endings = ['.png','.jpg','.jpeg']
@@ -1540,6 +1539,7 @@ class OutputVisualizer(ProblemPart):
 
         #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
         if any(file_name.endswith(end) for end in simple_file_endings):
+            print(" err", file)
             with open(file, "rb") as f:
                 file_signature = f.read(8)
             if any(file_signature.startswith(ft) for ft in permitted_filetypes):
@@ -1556,25 +1556,26 @@ class OutputVisualizer(ProblemPart):
             return False
  
     def save_image(self, file):
-            save_folder_path = os.getcwd()   
-            save_folder_path = save_folder_path + "/here" #TODO works but get correct path
-            # print("File is ", file ,"path ", save_folder_path)
 
-            
-            if  not self._has_created_folder and not os.path.exists(save_folder_path): #TODO check if directory exists #TODO subdirectories
-                self._has_created_folder = True
-                os.mkdir(save_folder_path)
+            save_folder_path = os.getcwd()   
+            save_folder_path = save_folder_path + f"/saved_images/output-{self.counter}" #TODO works but get correct path
+            if os.path.isdir(save_folder_path):
+                self.counter = self.counter +1
+                save_folder_path = os.getcwd()      #AWFUL PROGRAMMING
+                save_folder_path = save_folder_path + f"/saved_images/output-{self.counter}" #TODO works but get correct path
+                
+                
+            print("here path ", save_folder_path) #TODO GET JUDGE NAME AND OUTPUT  from funbction call
+            os.makedirs(save_folder_path, exist_ok=True)
             shutil.copy(file, save_folder_path)
                     
-                # default_path = Path(problemname + "/"+ f"{submission_name}" + "/"+ f"{testcase}/randomchars8st.extension")
-                # shutil.copytree(inFromProblemTmpDir, onDiskPermanentDir) #TODO lägg på rätt plats byt namn som du vill :)
     def visualizer_exists(self)->bool:
         if not self._visualizer and not self._missing_visualizer: 
             self._missing_visualizer = True
             self.warning('No visualizer found')
         return bool(self._visualizer)
                         
-    def visualize(self, submission_output: str, feedback_dir: str): #TODO context istället för testcase för flaggan
+    def visualize(self, result_file: str, feedback_dir: str, context: Context): #TODO context istället för testcase för flaggan
         res = []
         if not self.visualizer_exists():
             return
@@ -1587,12 +1588,8 @@ class OutputVisualizer(ProblemPart):
             return
 
         #Tries to run the visualzier
-        try:
-            if visualizer.compile()[0]:
-                print("it compiles ", visualizer)
-            print("runs before ", submission_output, " ss ", feedback_dir, "\nyo ",os.path.abspath(submission_output))
-            status, runtime = visualizer.run(args=[submissgion_output,feedback_dir])
-            print("info ",os.WIFEXITED(status)," status ", status, )
+        try:  
+            status, runtime = visualizer.run(args=[result_file,feedback_dir])           
             if status != 0:
                 self.warning(f'The output visualizer crashed, status: {status}')
         except Exception as e:
@@ -1601,16 +1598,20 @@ class OutputVisualizer(ProblemPart):
         #Runs the check for image type on all files in the feedback directory
         file_endings = [".png", ".jpg", ".jpeg", ".svg"]
         for file in os.listdir(feedback_dir):
+            file = os.path.join(feedback_dir,file) #Gör snyggare
             for ending in file_endings:
-                print("look like this ", file)
                 if file.endswith(ending):
-                    res.append(tuple((file, self.check_image_type)))
-                
-        if self._should_save_image:  #TODO True for testing
+                    res.append(tuple((file, self.check_image_type(file))))
+       
+                    
+        if context.save_output_visualizer_images:  #TODO True for testing
+            counter = 0
+
             for i in range(len(res)):
                 if res[i][1]:
+                    print("wym ",res[i][0], "cou " ,self.counter )
                     self.save_image(res[i][0])
- 
+                counter = counter +1
 
         #Raises a warning if the file signature is wrong or the list is empty
         if not any(res):
