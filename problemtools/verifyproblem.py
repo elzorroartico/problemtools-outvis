@@ -372,17 +372,13 @@ class TestCase(ProblemAspect):
         res_high.set_ac_runtime()
         
         visualizer = self._problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
-        print("WHERE ARE YTOU " , os.getcwd())
         if visualizer.visualizer_exists():
-            print(" eh ", os.listdir(self._problem.tmpfeeddir))
-            for dir in os.listdir(self._problem.tmpfeeddir):
-                print("dir",dir)
-                for file in dir:
-                    print("Hi ", file, )
-                    if os.path.basename(file).endswith(".ans"):
-                        print("did it")
-                        visualizer.visualize(dir, file) 
-            # visualizer.visualize(feedbackdir, submission_output)
+            for dir in os.listdir(os.path.join(self._problem.tmpdir,'Feedback')):
+                for file in os.listdir(os.path.join(self._problem.tmpdir,'Feedback',dir)):
+                    file = os.path.join(self._problem.tmpdir,'Feedback',dir,file)
+                    if file.endswith(".ans"):
+                        print("SSgg ", os.path.join(self._problem.tmpdir,'Feedback',dir))
+                        visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir))# TODO snygga till
 
         return (res, res_low, res_high)
 
@@ -1462,6 +1458,7 @@ class OutputValidators(ProblemPart):
                 validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
                 outfile = validator_output + "/out.txt"
                 errfile = validator_output + "/err.txt"
+                print("sub out ", submission_output, "fdr ", feedbackdir, "\nin ", testcase.infile)
                 status, runtime = val.run(submission_output,
                                           args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
                                           timelim=val_timelim, memlim=val_memlim,
@@ -1483,8 +1480,8 @@ class OutputValidators(ProblemPart):
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
                 if visualizer.visualizer_exists(): #TODO rätt scope?
                     randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) 
-                    shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpfeeddir, randomChars))#TODO HITTA VAR JAG SKA LÄGGA
-                    shutil.copy(os.path.realpath(submission_output), os.path.join(self.problem.tmpfeeddir, randomChars))
+                    shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpdir, 'Feedback', randomChars))#TODO HITTA VAR JAG SKA LÄGGA
+                    shutil.copy(os.path.realpath(submission_output), os.path.join(self.problem.tmpdir,'Feedback', randomChars))
                     
 
                 shutil.rmtree(feedbackdir)
@@ -1577,7 +1574,7 @@ class OutputVisualizer(ProblemPart):
             self.warning('No visualizer found')
         return bool(self._visualizer)
                         
-    def visualize(self, feedback_dir: str, submission_output: str): #TODO context istället för testcase för flaggan
+    def visualize(self, submission_output: str, feedback_dir: str): #TODO context istället för testcase för flaggan
         res = []
         if not self.visualizer_exists():
             return
@@ -1591,7 +1588,11 @@ class OutputVisualizer(ProblemPart):
 
         #Tries to run the visualzier
         try:
-            status, runtime = visualizer.run(args=[submission_output, feedback_dir])
+            if visualizer.compile()[0]:
+                print("it compiles ", visualizer)
+            print("runs before ", submission_output, " ss ", feedback_dir, "\nyo ",os.path.abspath(submission_output))
+            status, runtime = visualizer.run(args=[submissgion_output,feedback_dir])
+            print("info ",os.WIFEXITED(status)," status ", status, )
             if status != 0:
                 self.warning(f'The output visualizer crashed, status: {status}')
         except Exception as e:
@@ -1599,17 +1600,15 @@ class OutputVisualizer(ProblemPart):
         
         #Runs the check for image type on all files in the feedback directory
         file_endings = [".png", ".jpg", ".jpeg", ".svg"]
-        for ending in file_endings:
-            for file in glob.glob(feedback_dir + "/*" + ending):
-                res.append(tuple((file, self.check_image_type)))
+        for file in os.listdir(feedback_dir):
+            for ending in file_endings:
+                print("look like this ", file)
+                if file.endswith(ending):
+                    res.append(tuple((file, self.check_image_type)))
                 
         if self._should_save_image:  #TODO True for testing
             for i in range(len(res)):
                 if res[i][1]:
-                    # print("Old name ", res[i][0])
-                    # prefix, sufix = os.path.splitext(res[i][0])
-                    # os.rename(res[i][0],  os.path.join(prefix + str(i)+ sufix))
-                    # print("New file name ", res[i][0])
                     self.save_image(res[i][0])
  
 
@@ -1927,7 +1926,6 @@ class Problem(ProblemAspect):
 
     def __enter__(self) -> Problem:
         self.tmpdir = tempfile.mkdtemp(prefix=f'verify-{self.shortname}-')
-        self.tmpfeeddir = tempfile.mkdtemp(prefix=self.probdir, suffix='TempFeedDir') #TODO är de rätt?
         if not os.path.isdir(self.probdir):
             self.error(f"Problem directory '{self.probdir}' not found")
             self.shortname = None
@@ -1963,7 +1961,7 @@ class Problem(ProblemAspect):
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
         shutil.rmtree(self.tmpdir)
-        # shutil.rmtree(self.tmpfeeddir)
+        pass
 
     def __str__(self) -> str:
         return str(self.shortname)
