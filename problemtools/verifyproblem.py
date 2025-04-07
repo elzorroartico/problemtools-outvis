@@ -1500,7 +1500,6 @@ class OutputVisualizer(ProblemPart):
         work_dir=self.problem.tmpdir,
         language_config=self.problem.language_config)
         self._has_precompiled = False
-        self._correct_amount_visualizers = (len(self._visualizer) == 1)
 
         self.counter = 0
         self._has_warned_amount = True #TODO borde dessa finnas
@@ -1572,9 +1571,10 @@ class OutputVisualizer(ProblemPart):
                         
     def visualize(self, result_file: str, feedback_dir: str, context: Context): #TODO context istället för testcase för flaggan
         res = []
+        
         if not self.visualizer_exists():
             return
-        if self._correct_amount_visualizers: 
+        if len(self._visualizer)==1: 
             visualizer = self._visualizer[0] #Selects the visualizer 
         else:
             if self._has_warned_amount:
@@ -1582,7 +1582,7 @@ class OutputVisualizer(ProblemPart):
                 self.warning(f'Wrong amount of visualizer. \nExcpected: 1\nActual: {len(self._visualizer)}')
             return
 
-        #Tries to run the visualzier
+        #Tries to run the visualzier and raises a warning if failed
         try:  
             status, runtime = visualizer.run(args=[result_file,feedback_dir])           
             if status != 0:
@@ -1590,28 +1590,22 @@ class OutputVisualizer(ProblemPart):
         except Exception as e:
             self.warning(f'Error running output visualizer: {e}')
         
-        #Runs the check for image type on all files in the feedback directory
-        file_endings = [".png", ".jpg", ".jpeg", ".svg"]
+        # Iterates through all the files in the feedback directory and performs a file header check on all files with the allowed file extensions
+        file_extensions = [".png", ".jpg", ".jpeg", ".svg"]
         for file in os.listdir(feedback_dir):
-            file = os.path.join(feedback_dir,file) #Gör snyggare
-            for ending in file_endings:
-                if file.endswith(ending):
+            file = os.path.join(feedback_dir,file) #TODO Gör snyggare
+            for ext in file_extensions:
+                if file.endswith(ext):
                     res.append(tuple((file, self.check_image_type(file))))
        
-                    
-        if context.save_output_visualizer_images:  #TODO True for testing
-
+        if context.save_output_visualizer_images:  #If the flag was raised all images are saved
             for i in range(len(res)):
                 if res[i][1]:
                     self.save_image(res[i][0])
 
-
         #Raises a warning if the file signature is wrong or the list is empty
         if not any(res):
             self.warning("The visualizer did not generate an allowed image")
-       
-    
-
 
 
 class Runner:
@@ -1881,13 +1875,10 @@ PROBLEM_FORMATS = {
         'data':         [ProblemTestCases],
         'submissions':  [Submissions],
         'visualizers': [OutputVisualizer] #TODO for testing
-
-
     },
     '2023-07': { # TODO: Add all the parts
         'statement':    [ProblemStatement2023_07, Attachments],
         'visualizers': [OutputVisualizer]
-
     }
 }
 
@@ -1955,7 +1946,6 @@ class Problem(ProblemAspect):
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
         shutil.rmtree(self.tmpdir)
-        pass
 
     def __str__(self) -> str:
         return str(self.shortname)
@@ -1981,7 +1971,7 @@ class Problem(ProblemAspect):
             run.limit.check_limit_capabilities(self)
             
             # Skip any parts that do not belong to the format
-            parts = [part for part in args.parts if part in self.part_mapping] #Checkar inte outvis? TODO
+            parts = [part for part in args.parts if part in self.part_mapping]
 
             if executor:
                 for part in parts:
@@ -1992,8 +1982,7 @@ class Problem(ProblemAspect):
                 self.msg(f'Checking {part}')
                 for item in self.part_mapping[part]:
                     self.classes[item.PART_NAME].check(context)
-                #TODO skapa mappsystemet här eventuellt
-
+                #TODO Dirsystem with multipass
         except VerifyError:
             pass
         finally:
