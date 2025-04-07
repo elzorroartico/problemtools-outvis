@@ -1563,9 +1563,7 @@ class OutputVisualizer(ProblemPart):
                 self.counter = self.counter +1
                 save_folder_path = os.getcwd()      #AWFUL PROGRAMMING
                 save_folder_path = save_folder_path + f"/saved_images/output-{self.counter}" #TODO works but get correct path
-                
-                
-            print("here path ", save_folder_path) #TODO GET JUDGE NAME AND OUTPUT  from funbction call
+            #TODO GET JUDGE NAME AND OUTPUT  from funbction call
             os.makedirs(save_folder_path, exist_ok=True)
             shutil.copy(file, save_folder_path)
                     
@@ -1605,13 +1603,11 @@ class OutputVisualizer(ProblemPart):
        
                     
         if context.save_output_visualizer_images:  #TODO True for testing
-            counter = 0
 
             for i in range(len(res)):
                 if res[i][1]:
-                    print("wym ",res[i][0], "cou " ,self.counter )
                     self.save_image(res[i][0])
-                counter = counter +1
+
 
         #Raises a warning if the file signature is wrong or the list is empty
         if not any(res):
