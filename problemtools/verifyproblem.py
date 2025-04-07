@@ -1505,8 +1505,7 @@ class OutputVisualizer(ProblemPart):
         self.counter = 0
         self._has_warned_amount = True #TODO borde dessa finnas
         self._missing_visualizer = False
-        self._has_created_folder = False
-        self._should_save_image = False #TODO nice to get flag here
+        self._should_save_image = False #TODO nice to get flag here, synd att check körs sent
     def __str__(self) -> str: 
         return 'output visualizer'
     
@@ -1521,7 +1520,6 @@ class OutputVisualizer(ProblemPart):
             self._has_precompiled = True
         
     def check(self, context: Context) -> bool: #TODO när körs den här? innan? Kolla dependencies kolla ordningen
-        self._should_save_image = context.save_output_visualizer_images
         if self._check_res is not None:
             return self._check_res
         self._check_res = True
@@ -1538,8 +1536,7 @@ class OutputVisualizer(ProblemPart):
         file_name = os.path.basename(file)
 
         #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
-        if any(file_name.endswith(end) for end in simple_file_endings):
-            print(" err", file)
+        if any(file_name.endswith(end) for end in simple_file_endings): #TODO document
             with open(file, "rb") as f:
                 file_signature = f.read(8)
             if any(file_signature.startswith(ft) for ft in permitted_filetypes):
