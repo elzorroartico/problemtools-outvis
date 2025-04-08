@@ -323,7 +323,6 @@ class TestCase(ProblemAspect):
 
     def run_submission_real(self, sub, context: Context, timelim: int, timelim_low: int, timelim_high: int) -> Result:
         # This may be called off-main thread.
-
         if self._problem.get(ProblemTestCases)['is_interactive']:
             res_high = self._problem.classes[OutputValidators.PART_NAME].validate_interactive(self, sub, timelim_high, self._problem.classes[Submissions.PART_NAME])
         else:
@@ -343,11 +342,8 @@ class TestCase(ProblemAspect):
                     info = None
                 res_high = SubmissionResult('RTE', additional_info=info)
             else:
-                res_high = self._problem.classes[OutputValidators.PART_NAME].validate(self, outfile)
-
-                
+                res_high = self._problem.classes[OutputValidators.PART_NAME].validate(self, outfile)               
             res_high.runtime = runtime
-
 
         if res_high.runtime <= timelim_low:
             res_low = res_high
@@ -371,15 +367,15 @@ class TestCase(ProblemAspect):
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
         
-        visualizer = self._problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
+        #For every subdirectory in the feedbackdirectory in Problem it iterates through all files and on those with the file extension .ans it runs the visualizer
+        visualizer = self._problem.classes.get(OutputVisualizer.PART_NAME)
         if visualizer.visualizer_exists():
-            for dir in os.listdir(os.path.join(self._problem.tmpdir,'Feedback')):
+            for dir in os.listdir(os.path.join(self._problem.tmpdir,'Feedback')): #Ref till 1481 får feedbackdir kopieras från tmp i val till tmp i problem
                 for file in os.listdir(os.path.join(self._problem.tmpdir,'Feedback',dir)):
                     file = os.path.join(self._problem.tmpdir,'Feedback',dir,file)
                     if file.endswith(".ans"):
                         visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir), context)# TODO snygga till kan skicka med bara flaggan?
-
-
+                        
         return (res, res_low, res_high)
 
     def _init_result_for_testcase(self, res: SubmissionResult) -> SubmissionResult:
@@ -1476,10 +1472,10 @@ class OutputValidators(ProblemPart):
                         self.info("Failed to read validator output: %s", e)
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
 
-                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)    #TODO går att flytta ner men fult???
+                visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)    #TODO CHANGE METHOD AS TO feedbackdir josh method
                 if visualizer.visualizer_exists(): #TODO rätt scope?
                     randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) 
-                    shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpdir, 'Feedback', randomChars))#TODO HITTA VAR JAG SKA LÄGGA
+                    shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpdir, 'Feedback', randomChars)) #TODO ref från rad 374
                     shutil.copy(os.path.realpath(submission_output), os.path.join(self.problem.tmpdir,'Feedback', randomChars))
                     
 
@@ -1502,18 +1498,17 @@ class OutputVisualizer(ProblemPart):
         self._has_precompiled = False
 
         self.counter = 0
-        self._has_warned_amount = True #TODO borde dessa finnas
-        self._missing_visualizer = False
-        self._should_save_image = False #TODO nice to get flag here, synd att check körs sent
+        self._has_warned_amount = True      #Boolean value regarding correct amount of visualizers is only raised once
+        self._missing_visualizer = False    #Boolean value regarding visualizer warning is only raised once
     def __str__(self) -> str: 
         return 'output visualizer'
     
     @staticmethod
     def setup_dependencies():
-        return [OutputValidators] #TODO kan kanske ta bort
+        return [OutputValidators]
 
     #Does an early compilatilation of the visualizer
-    def start_background_work(self, context: Context) -> None: #kan man lägga flaggan här
+    def start_background_work(self, context: Context) -> None: #kan
         if not self._has_precompiled:
             context.submit_background_work(lambda v: v.compile(), self._visualizer)
             self._has_precompiled = True
