@@ -374,7 +374,7 @@ class TestCase(ProblemAspect):
                 for file in os.listdir(os.path.join(self._problem.tmpdir,'Feedback',dir)):
                     file = os.path.join(self._problem.tmpdir,'Feedback',dir,file)
                     if file.endswith(".ans"):
-                        visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir), context)# TODO snygga till kan skicka med bara flaggan?
+                        visualizer.visualize(file , os.path.join(self._problem.tmpdir,'Feedback',dir), context)# TODO snygga till 
                         
         return (res, res_low, res_high)
 
@@ -1473,7 +1473,7 @@ class OutputValidators(ProblemPart):
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
 
                 visualizer = self.problem.classes.get(OutputVisualizer.PART_NAME)    #TODO CHANGE METHOD AS TO feedbackdir josh method
-                if visualizer.visualizer_exists(): #TODO rätt scope?
+                if visualizer.visualizer_exists():
                     randomChars = ''.join(random.choices(string.ascii_letters + string.digits , k=16)) 
                     shutil.copytree(os.path.realpath(feedbackdir) , os.path.join(self.problem.tmpdir, 'Feedback', randomChars)) #TODO ref från rad 374
                     shutil.copy(os.path.realpath(submission_output), os.path.join(self.problem.tmpdir,'Feedback', randomChars))
@@ -1519,23 +1519,20 @@ class OutputVisualizer(ProblemPart):
         self._check_res = True
 
 
-    
-    def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
+    #Checks the file extension of the given file and then tries to validate if the given file is one of the permitted ones
+    def check_image_type(self, file) -> bool: 
         permitted_filetypes = [
         b'\x89PNG\r\n\x1a\n',  # PNG file header
-        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG file header #TODO this and jpg same?
-        b'\xFF\xD8\xFF'    # JPG file header
+        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG and JPG file header
         ]
         simple_file_endings = ['.png','.jpg','.jpeg']
-        file_name = os.path.basename(file)
-
         #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
-        if any(file_name.endswith(end) for end in simple_file_endings): #TODO document
+        if any(file.endswith(end) for end in simple_file_endings): 
             with open(file, "rb") as f:
                 file_signature = f.read(8)
             if any(file_signature.startswith(ft) for ft in permitted_filetypes):
                 return True
-        elif file_name.endswith('.svg'):
+        elif file.endswith('.svg'):
             try:
                 with open(file, 'r', encoding='utf-8') as f:
                     content = f.read(256)          #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
