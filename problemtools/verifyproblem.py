@@ -1518,11 +1518,11 @@ class OutputVisualizer(ProblemPart):
             context.submit_background_work(lambda v: v.compile(), self._visualizer)
             self._has_precompiled = True
         
-    def check(self, context: Context) -> bool: #TODO när körs den här? innan? Kolla dependencies kolla ordningen
+    def check(self, context: Context) -> bool:
         if self._check_res is not None:
             return self._check_res
         self._check_res = True
-        #TODO should save kanske här?
+
 
     
     def check_image_type(self, file) -> bool: #Checks the file type and returns bool 
@@ -1549,21 +1549,19 @@ class OutputVisualizer(ProblemPart):
             except Exception as e:
                 self.warning(f"Error checking SVG: {e}")
         else:
-            return False
- 
-    def save_image(self, file):
-
-            save_folder_path = os.getcwd()   
-            save_folder_path = save_folder_path + f"/saved_images/output-{self.counter}" #TODO works but get correct path
-            if os.path.isdir(save_folder_path):
-                self.counter = self.counter +1
-                save_folder_path = os.getcwd()      #AWFUL PROGRAMMING
-                save_folder_path = save_folder_path + f"/saved_images/output-{self.counter}" #TODO works but get correct path
-            #TODO GET JUDGE NAME AND OUTPUT  from funbction call
+            return False        
+    
+    #Gets a path to the folder where it should save
+    #Then creates a new folder for this round of tests and copies over the file, then increments the folder counter by one
+    def save_image(self, file): 
+            save_folder_path = os.getcwd() + f"/saved_images/output-{self.counter}" #TODO works but get correct path  #TODO GET JUDGE NAME AND OUTPUT  from funbction call
             os.makedirs(save_folder_path, exist_ok=True)
             shutil.copy(file, save_folder_path)
-                    
-    def visualizer_exists(self)->bool:
+            self.counter = self.counter + 1
+    
+    #Returns True if a visualizer exists
+    #Otherwise False and changes the local variable if this already has been raised               
+    def visualizer_exists(self)->bool: 
         if not self._visualizer and not self._missing_visualizer: 
             self._missing_visualizer = True
             self.warning('No visualizer found')
@@ -1574,8 +1572,11 @@ class OutputVisualizer(ProblemPart):
         
         if not self.visualizer_exists():
             return
-        if len(self._visualizer)==1: 
-            visualizer = self._visualizer[0] #Selects the visualizer 
+        
+        #Checks if there is only one validator and then selects it
+        #Otherwise raises warning 
+        if len(self._visualizer) == 1:  
+            visualizer = self._visualizer[0] 
         else:
             if self._has_warned_amount:
                 self._has_warned_amount = False
