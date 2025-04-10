@@ -1468,7 +1468,28 @@ class OutputValidators(ProblemPart):
 
         # TODO: check that all output validators give same result
         return res
+    
+class StaticValidator:
+    PART_NAME = 'static_validator'
+    
+    def setup(self):
+        self._validator = run.find_programs(os.path.join(self.problem.probdir,
+                                                          'static_validators'),
+                                             language_config=self.problem.language_config,
+                                             work_dir=self.problem.tmpdir)
+        self._has_precompiled = False
+        return 
+    
+    def __str__(self):
+        return 'static validator'
+    
+    def check (self, context: Context) -> bool:
+        
+        return 
 
+    def validate(self) -> SubmissionResult:
+        return
+        
 
 class Runner:
     def __init__(self, problem: Problem, sub, context: Context, timelim: int, timelim_low: int, timelim_high: int) -> None:
