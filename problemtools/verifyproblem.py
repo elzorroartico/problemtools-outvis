@@ -11,6 +11,7 @@ import string
 import hashlib
 import collections
 import os
+from pathlib import Path
 import signal
 import re
 import shutil
@@ -99,6 +100,7 @@ class Context:
         self.data_filter: Pattern[str] = args.data_filter
         self.submission_filter: Pattern[str] = args.submission_filter
         self.fixed_timelim: int|None = args.fixed_timelim
+        self.save_output_visualizer_images: bool = args.save_visualizer
         self.executor = executor
         self._background_work: list[concurrent.futures.Future[object]] = []
 
@@ -322,8 +324,16 @@ class TestCase(ProblemAspect):
 
     def run_submission_real(self, sub, context: Context, timelim: int, timelim_low: int, timelim_high: int) -> Result:
         # This may be called off-main thread.
+
+        feedbackdir = os.path.join(self._problem.tmpdir, f"feedback-{self.counter}")
+        # The problem directory persists long enough that reuse is a problem
+        if os.path.exists(feedbackdir):
+            shutil.rmtree(feedbackdir)
+        os.makedirs(feedbackdir)
+
+        outfile = "" # TODO: what should we do for interactive/multipass?
         if self._problem.get(ProblemTestCases)['is_interactive']:
-            res_high = self._problem.classes[OutputValidators.PART_NAME].validate_interactive(self, sub, timelim_high, self._problem.classes[Submissions.PART_NAME])
+            res_high = self._problem.classes[OutputValidators.PART_NAME].validate_interactive(self, sub, timelim_high, self._problem.classes[Submissions.PART_NAME], feedbackdir)
         else:
             outfile = os.path.join(self._problem.tmpdir, f'output-{self.counter}')
             errfile = os.path.join(self._problem.tmpdir, f'error-{self.counter}')
@@ -341,7 +351,7 @@ class TestCase(ProblemAspect):
                     info = None
                 res_high = SubmissionResult('RTE', additional_info=info)
             else:
-                res_high = self._problem.classes[OutputValidators.PART_NAME].validate(self, outfile)
+                res_high = self._problem.classes[OutputValidators.PART_NAME].validate(self, outfile, feedbackdir)
             res_high.runtime = runtime
 
         if res_high.runtime <= timelim_low:
@@ -365,6 +375,11 @@ class TestCase(ProblemAspect):
         res.set_ac_runtime()
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
+        
+        visualizer = self._problem.classes.get(OutputVisualizer.PART_NAME)
+        if visualizer.visualizer_exists() and outfile:
+            visualizer.visualize(outfile , feedbackdir, context)
+
         return (res, res_low, res_high)
 
     def _init_result_for_testcase(self, res: SubmissionResult) -> SubmissionResult:
@@ -1368,7 +1383,15 @@ class OutputValidators(ProblemPart):
         return [val for val in vals if val is not None]
 
 
-    def validate_interactive(self, testcase: TestCase, submission, timelim: int, errorhandler: Submissions) -> SubmissionResult:
+    def validate_interactive(self, testcase: TestCase, submission, timelim: int, errorhandler: Submissions, feedbackdir: str) -> SubmissionResult:
+        """
+        Validate a submission against all output validators.
+
+        Parameters:
+            testcase: The test case we are validating.
+            submission: The submission to validate.
+            feedback_dir_path: Path to feedback directory. If None, a temporary directory will be created and cleaned up.
+        """
         # This may be called off-main thread.
         interactive_output_re = r'\d+ \d+\.\d+ \d+ \d+\.\d+ (validator|submission)'
         res = SubmissionResult('JE')
@@ -1383,13 +1406,23 @@ class OutputValidators(ProblemPart):
 
         val_timelim = self.problem.get(ProblemConfig)['limits']['validation_time']
         val_memlim = self.problem.get(ProblemConfig)['limits']['validation_memory']
+        first_validator = True
         for val in self._actual_validators():
             if val.compile()[0]:
-                feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
+                # Subtle point: if we're running multipass, we must ensure feedback dir is not reset
+                # If we're running multipass, there exists exactly one output validator
+                # Only deleting on second iteration is still fine with legacy and multiple output validators
+                if not first_validator:
+                    feedback_path = Path(feedbackdir)
+                    shutil.rmtree(feedback_path)
+                    feedback_path.mkdir()
+                first_validator = False
+
                 validator_args[2] = feedbackdir + os.sep
                 f = tempfile.NamedTemporaryFile(delete=False)
                 interactive_out = f.name
                 f.close()
+
                 i_status, _ = interactive.run(outfile=interactive_out,
                                               args=initargs + val.get_runcmd(memlim=val_memlim) + validator_args + [';'] + submission_args, work_dir=submission.path)
                 if is_RTE(i_status):
@@ -1425,25 +1458,48 @@ class OutputValidators(ProblemPart):
                         res.validator_first = (first == 'validator')
 
                 os.unlink(interactive_out)
-                shutil.rmtree(feedbackdir)
                 if res.verdict != 'AC':
+                    res.from_validator = True
                     return res
         # TODO: check that all output validators give same result
         return res
 
 
-    def validate(self, testcase: TestCase, submission_output: str) -> SubmissionResult:
+    def validate(self, testcase: TestCase, submission_output: str, feedback_dir_path: str|None = None) -> SubmissionResult:
+        """
+        Run all output validators on the given test case and submission output.
+
+        Parameters:
+            testcase: The test case we are validating.
+            submission_output: Path to out file of submission.
+            feedback_dir_path: Path to feedback directory. If None, a temporary directory will be created and cleaned up.
+        """
         res = SubmissionResult('JE')
+        res.from_validator = True
         val_timelim = self.problem.get(ProblemConfig)['limits']['validation_time']
         val_memlim = self.problem.get(ProblemConfig)['limits']['validation_memory']
         flags = self.problem.get(ProblemConfig)['validator_flags'].split() + testcase.testcasegroup.config['output_validator_flags'].split()
+
+        first_validator = True
         for val in self._actual_validators():
             if val.compile()[0]:
-                feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
+                # Subtle point: if we're running multipass, we must ensure feedback dir is not reset
+                # If we're running multipass, there exists exactly one output validator
+                # Only deleting on second iteration is still fine with legacy and multiple output validators
+                if not first_validator:
+                    feedback_path = Path(feedbackdir)
+                    shutil.rmtree(feedback_path)
+                    feedback_path.mkdir()
+                first_validator = False
+
+                if feedback_dir_path:
+                    feedbackdir = feedback_dir_path
+                else:
+                    feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
                 validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
                 outfile = validator_output + "/out.txt"
                 errfile = validator_output + "/err.txt"
-                status, runtime = val.run(submission_output,
+                status, runtime = val.run(infile=submission_output,
                                           args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
                                           timelim=val_timelim, memlim=val_memlim,
                                           outfile=outfile, errfile=errfile)
@@ -1460,13 +1516,128 @@ class OutputValidators(ProblemPart):
                     except IOError as e:
                         self.info("Failed to read validator output: %s", e)
                 res = self._parse_validator_results(val, status, feedbackdir, testcase)
-                shutil.rmtree(feedbackdir)
                 shutil.rmtree(validator_output)
+                if feedback_dir_path is None:
+                    shutil.rmtree(feedbackdir)
+                res.from_validator = True
                 if res.verdict != 'AC':
                     return res
 
         # TODO: check that all output validators give same result
         return res
+
+    #Class for handeling Output Visualizers
+class OutputVisualizer(ProblemPart): 
+    PART_NAME = 'output_visualizer'
+
+    def setup(self):       
+        self._visualizer = run.find_programs(os.path.join(self.problem.probdir,'output_visualizer'), 
+        work_dir=self.problem.tmpdir,
+        language_config=self.problem.language_config)
+        self._has_precompiled = False
+
+        self.counter = 0
+        self._has_warned_amount = True      #Boolean value regarding correct amount of visualizers is only raised once
+        self._missing_visualizer = False    #Boolean value regarding visualizer warning is only raised once
+    def __str__(self) -> str: 
+        return 'output visualizer'
+    
+    @staticmethod
+    def setup_dependencies():
+        return [OutputValidators]
+
+    #Does an early compilatilation of the visualizer
+    def start_background_work(self, context: Context) -> None: #kan
+        if not self._has_precompiled:
+            context.submit_background_work(lambda v: v.compile(), self._visualizer)
+            self._has_precompiled = True
+        
+    def check(self, context: Context) -> bool:
+        if self._check_res is not None:
+            return self._check_res
+        self._check_res = True
+
+
+    #Checks the file extension of the given file and then tries to validate if the given file is one of the permitted ones
+    def check_image_type(self, file) -> bool: 
+        permitted_filetypes = [
+        b'\x89PNG\r\n\x1a\n',  # PNG file header
+        b'\xff\xd8\xff\xe0\x10\x00JF',     # JPEG and JPG file header
+        ]
+        simple_file_endings = ['.png','.jpg','.jpeg']
+        #If the file is not an svg it then reads in the first 8 bytes and checks them agains permitted_filetypes to se if it's an allowed signature
+        if any(file.endswith(end) for end in simple_file_endings): 
+            with open(file, "rb") as f:
+                file_signature = f.read(8)
+            if any(file_signature.startswith(ft) for ft in permitted_filetypes):
+                return True
+        elif file.endswith('.svg'):
+            try:
+                with open(file, 'r', encoding='utf-8') as f:
+                    content = f.read(256)          #Reads the XML declaration and first 500 characters. Then checks if the declaration is correct and if the <svg> tag is present
+                if content.startswith('<?xml') and '<svg' in content:
+                    return True
+            except Exception as e:
+                self.warning(f"Error checking SVG: {e}")
+        else:
+            return False        
+    
+    #Gets a path to the folder where it should save
+    #Then creates a new folder for this round of tests and copies over the file, then increments the folder counter by one
+    def save_image(self, file): 
+        save_folder_path = os.getcwd() + f"/saved_images/output-{self.counter}" #TODO works but get correct path  #TODO GET JUDGE NAME AND OUTPUT  from funbction call
+        os.makedirs(save_folder_path, exist_ok=True)
+        shutil.copy(file, save_folder_path)
+        self.counter = self.counter + 1
+
+    #Returns True if a visualizer exists
+    #Otherwise False and changes the local variable if this already has been raised               
+    def visualizer_exists(self)->bool: 
+        if not self._visualizer and not self._missing_visualizer: 
+            self._missing_visualizer = True
+            self.warning('No visualizer found')
+        return bool(self._visualizer)
+                        
+    def visualize(self, result_file: str, feedback_dir: str, context: Context): #TODO context istället för testcase för flaggan
+        res = []
+        
+        if not self.visualizer_exists():
+            return
+        
+        #Checks if there is only one validator and then selects it
+        #Otherwise raises warning 
+        if len(self._visualizer) == 1:  
+            visualizer = self._visualizer[0] 
+        else:
+            if self._has_warned_amount:
+                self._has_warned_amount = False
+                self.warning(f'Wrong amount of visualizer. \nExcpected: 1\nActual: {len(self._visualizer)}')
+            return
+
+        #Tries to run the visualzier and raises a warning if failed
+        try:  
+            status, runtime = visualizer.run(args=[result_file,feedback_dir])           
+            if status != 0:
+                self.warning(f'The output visualizer crashed, status: {status}')
+        except Exception as e:
+            self.warning(f'Error running output visualizer: {e}')
+        
+        # Iterates through all the files in the feedback directory and performs a file header check on all files with the allowed file extensions
+        file_extensions = [".png", ".jpg", ".jpeg", ".svg"]
+        for file in os.listdir(feedback_dir):
+            file = os.path.join(feedback_dir,file) #TODO Gör snyggare
+            for ext in file_extensions:
+                if file.endswith(ext):
+                    res.append(tuple((file, self.check_image_type(file))))
+       
+        if context.save_output_visualizer_images:  #If the flag was raised all images are saved
+            for i in range(len(res)):
+                if res[i][1]:
+                    self.save_image(res[i][0])
+
+        #Raises a warning if the file signature is wrong or the list is empty
+        if not any(res):
+            self.warning("The visualizer did not generate an allowed image")
 
 
 class Runner:
@@ -1735,9 +1906,11 @@ PROBLEM_FORMATS = {
         'graders':      [Graders],
         'data':         [ProblemTestCases],
         'submissions':  [Submissions],
+        'visualizers': [OutputVisualizer] #TODO for testing
     },
     '2023-07': { # TODO: Add all the parts
         'statement':    [ProblemStatement2023_07, Attachments],
+        'visualizers': [OutputVisualizer]
     }
 }
 
@@ -1841,6 +2014,7 @@ class Problem(ProblemAspect):
                 self.msg(f'Checking {part}')
                 for item in self.part_mapping[part]:
                     self.classes[item.PART_NAME].check(context)
+                #TODO Dirsystem with multipass
         except VerifyError:
             pass
         finally:
@@ -1905,6 +2079,10 @@ def argparser_basic_arguments(parser: argparse.ArgumentParser) -> None:
                         default='automatic', choices=list(PROBLEM_FORMATS.keys()) + ['automatic'],
                         help='which problem format should the package be interpreted as, or "automatic" if it should be figured out from problem.yaml')
 
+    parser.add_argument('-sv', '--save_visualizer',
+                        #type=bool,
+                        action='store_true',
+                        help="Pass to save visualizer outputs to disk")
 
 def argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Validate a problem package in the Kattis problem format.')
