@@ -9,3 +9,5 @@ grader_flags: ''
 accept_score: 1.0
 reject_score: 0.0
 range: '-inf +inf'
+
+static_validation: 'true' #TODO for testing

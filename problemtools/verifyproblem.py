@@ -367,6 +367,13 @@ class TestCase(ProblemAspect):
         res.set_ac_runtime()
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
+         
+        static_validator = self._problem._classes.get(StaticValidator.PART_NAME)
+        print(f'Part: {static_validator}, BoolVal:{bool(static_validator)}')
+        print(f'thing {self.testcasegroup.config}, subm {sub}, path {sub.path}')
+        if static_validator:
+            static_validator.validate(self, sub, sub.path)
+            print(f'yooo')
         return (res, res_low, res_high)
 
     def _init_result_for_testcase(self, res: SubmissionResult) -> SubmissionResult:
@@ -1469,12 +1476,12 @@ class OutputValidators(ProblemPart):
         # TODO: check that all output validators give same result
         return res
     
-class StaticValidator:
+class StaticValidator(ProblemPart):
     PART_NAME = 'static_validator'
     
     def setup(self):
         self._validator = run.find_programs(os.path.join(self.problem.probdir,
-                                                          'static_validators'),
+                                                          'static_validator'),
                                              language_config=self.problem.language_config,
                                              work_dir=self.problem.tmpdir)
         self._has_precompiled = False
@@ -1484,10 +1491,69 @@ class StaticValidator:
         return 'static validator'
     
     def check (self, context: Context) -> bool:
+        # if self._check_res is not None: #TODO lowkey ha med?
+        #     return self._check_res
+        # self._check_res = True
         
+        try:
+            success, msg = self._validator[0].compile()
+            
+            if not success:
+                self.error(f'Compile error for static validator {TestCaseGroup.name}: {msg}')
+        except Exception as e:
+            self.warning(f'Error running the static validator {e}')
+        
+        if self._check_res:
+            flags = self.problem.get(ProblemConfig)['validator_flags'] #eller hämta från test case group? TODO
+            
+            rejected = False #Värt att ha den i loopen?            
+            for testcase in TestCaseGroup:
+                print("Hehe?")
+                # result = self.validate(testcase, file_name)
+                
+                if result.verdict != 'AC':
+                    rejected = True
+                #TODO mer logik med result.verdict för att kolla cases
+                
+            
         return 
 
-    def validate(self) -> SubmissionResult:
+    def validate(self, testcase: TestCase, submission_file_path: str, feedback_dir: str) -> SubmissionResult:
+        """
+        Run the static validator on the test case groups and submission file
+        
+        Parameters:
+        
+        """
+        res = SubmissionResult('JE')
+        res.from_validator = True
+        val_timelim = self.problem.get(ProblemConfig)['limits']['validation_time']
+        val_memlim = self.problem.get(ProblemConfig)['limits']['validation_memory']
+        flags = self.problem.get(ProblemConfig)['validator_flags'].split() + testcase.testcasegroup.config['output_validator_flags'].split()
+        
+        if not self._validator:
+            return
+        validator = self._validator[0]
+        
+        feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
+        validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
+        outfile = validator_output + "/out.txt"
+        errfile = validator_output + "/err.txt"
+        if not testcase.testcasegroup.config['static_validation'] == 'true' and self._validators: #TODO fixa så att den kollaar om stat val i test_group.yaml tom. Check kommer inte iterera genom alla testcases. lowkey ha i validate?
+            self.error('There are static validator programs but they are not specified in test_group.yaml')
+        if testcase.testcasegroup.config['static_validation'] and not self._validator: #TODO check that 
+            self.error('test_group.yaml specifies a static validator but none was found')
+            return
+        try:
+            status, runtime = validator.run(infile=testcase.infile,
+                                  args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
+                                  timelim=val_timelim, memlim=val_memlim,
+                                  outfile=outfile, errfile=errfile) #TODO fix the fucking cals
+            print(f'This is status {status}')
+        except Exception as e:
+            self.warning(f'Error running the validator: {e}')
+        
+        
         return
         
 
@@ -1753,13 +1819,14 @@ PROBLEM_FORMATS: dict[str, dict[str, list[Type[ProblemPart]]]] = {
     'legacy': {
         'config':       [ProblemConfig],
         'statement':    [ProblemStatement, Attachments],
-        'validators':   [InputValidators, OutputValidators],
+        'validators':   [InputValidators, OutputValidators, StaticValidator], #TODO for testing
         'graders':      [Graders],
         'data':         [ProblemTestCases],
         'submissions':  [Submissions],
     },
     '2023-07': { # TODO: Add all the parts
         'statement':    [ProblemStatement, Attachments],
+        'validators':   [StaticValidator],
     }
 }
 
