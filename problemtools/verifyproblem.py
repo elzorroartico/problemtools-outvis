@@ -369,11 +369,9 @@ class TestCase(ProblemAspect):
         res_high.set_ac_runtime()
          
         static_validator = self._problem._classes.get(StaticValidator.PART_NAME)
-        print(f'Part: {static_validator}, BoolVal:{bool(static_validator)}')
-        print(f'thing {self.testcasegroup.config}, subm {sub}, path {sub.path}')
+        print(f'\nbase is {self._base}')
         if static_validator:
-            static_validator.validate(self, sub, sub.path)
-            print(f'yooo')
+            res_static = static_validator.validate(self.testcasegroup.config, self.testcasegroup)
         return (res, res_low, res_high)
 
     def _init_result_for_testcase(self, res: SubmissionResult) -> SubmissionResult:
@@ -605,7 +603,7 @@ class TestCaseGroup(ProblemAspect):
                 self.error(f'Testcase group {self._datadir} exists, but does not contain any testcases')
             else:
                 self.warning(f'Sample testcase group {self._datadir} exists, but does not contain any testcases')
-
+            #TODO check for static val
         # Check whether a <= b according to a natural sorting where numeric components
         # are compactified, so that e.g. "a" < "a1" < "a2" < "a10" = "a010" < "a10a".
         def natural_sort_le(a: str, b: str) -> bool:
@@ -1491,70 +1489,124 @@ class StaticValidator(ProblemPart):
         return 'static validator'
     
     def check (self, context: Context) -> bool:
-        # if self._check_res is not None: #TODO lowkey ha med?
-        #     return self._check_res
-        # self._check_res = True
+        if self._check_res is not None: 
+            return self._check_res
+        self._check_res = True
+        
+        if self.problem.get(ProblemConfig)['static_validation'] and not self._validator: #TODO check that 
+            self.error('test_group.yaml specifies a static validator but none was found')
         
         try:
             success, msg = self._validator[0].compile()
             
             if not success:
-                self.error(f'Compile error for static validator {TestCaseGroup.name}: {msg}')
+                self.error(f'Compile error for static validator : {msg}') #TODO kanske i validate?
         except Exception as e:
-            self.warning(f'Error running the static validator {e}')
-        
-        if self._check_res:
-            flags = self.problem.get(ProblemConfig)['validator_flags'] #eller hämta från test case group? TODO
-            
-            rejected = False #Värt att ha den i loopen?            
-            for testcase in TestCaseGroup:
-                print("Hehe?")
-                # result = self.validate(testcase, file_name)
-                
-                if result.verdict != 'AC':
-                    rejected = True
-                #TODO mer logik med result.verdict för att kolla cases
+            self.warning(f'Error compiling the static validator {e}')
+    
                 
             
-        return 
+        return self._check_res
 
-    def validate(self, testcase: TestCase, submission_file_path: str, feedback_dir: str) -> SubmissionResult:
+    def validate(self, config: ProblemConfig,testcasename: str, feedback_dir_path: str|None = None) -> SubmissionResult:
         """
         Run the static validator on the test case groups and submission file
         
         Parameters:
         
         """
+        entry_point =  "hello/submissions/accepted/hello.py" #TODO path to submission
         res = SubmissionResult('JE')
-        res.from_validator = True
-        val_timelim = self.problem.get(ProblemConfig)['limits']['validation_time']
-        val_memlim = self.problem.get(ProblemConfig)['limits']['validation_memory']
-        flags = self.problem.get(ProblemConfig)['validator_flags'].split() + testcase.testcasegroup.config['output_validator_flags'].split()
         
+        flags = self.problem.get(ProblemConfig)['validator_flags'].split() + config['static_validator_flags'].split()
+        language = self.problem.get(ProblemConfig)['languages']
+
         if not self._validator:
-            return
+            return res
         validator = self._validator[0]
         
-        feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
-        validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
-        outfile = validator_output + "/out.txt"
-        errfile = validator_output + "/err.txt"
-        if not testcase.testcasegroup.config['static_validation'] == 'true' and self._validators: #TODO fixa så att den kollaar om stat val i test_group.yaml tom. Check kommer inte iterera genom alla testcases. lowkey ha i validate?
-            self.error('There are static validator programs but they are not specified in test_group.yaml')
-        if testcase.testcasegroup.config['static_validation'] and not self._validator: #TODO check that 
-            self.error('test_group.yaml specifies a static validator but none was found')
-            return
-        try:
-            status, runtime = validator.run(infile=testcase.infile,
-                                  args=[testcase.infile, testcase.ansfile, feedbackdir] + flags,
-                                  timelim=val_timelim, memlim=val_memlim,
-                                  outfile=outfile, errfile=errfile) #TODO fix the fucking cals
-            print(f'This is status {status}')
-        except Exception as e:
-            self.warning(f'Error running the validator: {e}')
+        if self.problem.get(ProblemConfig)['static_validation'] == 'false' and self._validator: #TODO fixa så att den kollaar om stat val i test_group.yaml tom. Check kommer inte iterera genom alla testcases. lowkey ha i validate?
+            self.error('There is a static validator program but it is not specified in test_group.yaml')
         
+
+        # feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir) #TODO this or feedbackdir from params
+        # validator_output = tempfile.mkdtemp(prefix='checker_out', dir=self.problem.tmpdir)
+        print(f'config name is {testcasename}')
+        if feedback_dir_path:
+            feedbackdir = feedback_dir_path
+        else:
+            feedbackdir = tempfile.mkdtemp(prefix='feedback', dir=self.problem.tmpdir)
+        validator_output = tempfile.mkdtemp(prefix='static_val', dir=self.problem.tmpdir)
+        errfile = os.path.join(validator_output, f'err.txt')
+        outfile = os.path.join(validator_output, f'out.txt')
         
-        return
+
+        status, runtime = validator.run(args=[language, entry_point, feedbackdir]+flags, errfile=errfile, outfile=outfile)
+        if os.WEXITSTATUS(status) != 42:
+            self.warning(f'The static validator exits with wrong exit code, status: {os.WEXITSTATUS(status) }')
+
+            
+    
+        
+        if True: #self.log.isEnabledFor(logging.DEBUG): TODO
+            try:
+                with open(outfile, mode="rt") as f:
+                    output = f.read()
+                if output:
+                    self.log.debug("Validator output:\n%s", output)
+                    print(f'Validator output:\n%s, {output}') #TODO for testing
+                with open(errfile, mode="rt") as f:
+                    error = f.read()
+                if error:
+                    self.log.debug("Validator stderr:\n%s", error)
+                    print(f'Validator stderr:\n%s, {error}') #TODO
+            except IOError as e:
+                self.info("Failed to read validator output: %s", e)
+                
+        
+        return res
+    
+    @staticmethod
+    def _get_feedback(feedback_dir: str) -> str|None:
+        all_feedback = []
+        for feedback_file in os.listdir(feedback_dir):
+            feedback_path = os.path.join(feedback_dir, feedback_file)
+            if os.path.getsize(feedback_path) == 0:
+                continue
+            all_feedback.append(f'=== {feedback_file}: ===')
+            # Note: The file could contain non-unicode characters, "replace" to be on the safe side
+            with open(feedback_path, 'r', errors="replace") as feedback:
+                # Cap amount of feedback per file at some high-ish
+                # size, so that a buggy validator spewing out lots of
+                # data doesn't kill us.
+                all_feedback.append(feedback.read(128*1024))
+        if all_feedback:
+            return '\n'.join(all_feedback)
+        return None
+
+
+    def _parse_validator_results(self, val, status: int, feedbackdir, testcase: TestCase) -> SubmissionResult: #TODO GÖR METOD 
+        custom_score = self.problem.get(ProblemConfig)['grading']['custom_scoring']
+        score = None
+        # TODO: would be good to have some way of displaying the feedback for debugging uses
+        score_file = os.path.join(feedbackdir, 'score.txt')
+        if not custom_score and os.path.isfile(score_file):
+            return SubmissionResult('JE', reason='validator produced "score.txt" but problem does not have custom scoring activated')
+
+        if not os.WIFEXITED(status):
+            return SubmissionResult('JE',
+                                    reason=f'static validator {val} crashed, status {status}',
+                                    additional_info=StaticValidator._get_feedback(feedbackdir))
+        ret = os.WEXITSTATUS(status)
+        if ret not in [42, 43]:
+            return SubmissionResult('JE',
+                                    reason=f'static validator {val} exited with status {ret}',
+                                    additional_info=StaticValidator._get_feedback(feedbackdir))
+
+        if ret == 43:
+            return SubmissionResult('WA', additional_info=StaticValidator._get_feedback(feedbackdir))
+
+        return SubmissionResult('AC', score=score)
         
 
 class Runner:

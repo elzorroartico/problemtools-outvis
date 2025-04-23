@@ -131,7 +131,6 @@ class Program(ABC):
                 if working_directory is not None:
                     os.chdir(working_directory)
                 os.execvp(argv[0], argv)
-                print(f'len: {len(argv)}')
             except Exception as exc:
                 print("Oops. Fatal error in child process:")
                 print(exc)

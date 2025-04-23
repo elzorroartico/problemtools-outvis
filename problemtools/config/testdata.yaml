@@ -1,6 +1,6 @@
 input_validator_flags: ''
 output_validator_flags: ''
-
+static_validator_flags: '' #TODO for testing
 on_reject: break
 
 grading: default
@@ -10,4 +10,4 @@ accept_score: 1.0
 reject_score: 0.0
 range: '-inf +inf'
 
-static_validation: 'true' #TODO for testing
+static_validation: 'false' #TODO for testing

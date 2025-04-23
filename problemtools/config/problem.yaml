@@ -7,6 +7,7 @@ license: unknown
 rights_owner: ''
 
 validation: default
+static_validation: 'false'
 validator_flags: ''
 
 limits:
