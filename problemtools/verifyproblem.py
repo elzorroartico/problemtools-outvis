@@ -345,7 +345,7 @@ class TestCase(ProblemAspect):
             else:
                 res_high = self._problem.getProblemPart(OutputValidators).validate(self, outfile)
             res_high.runtime = runtime
-
+        #STATIC VAL HERE? TODO
         if res_high.runtime <= timelim_low:
             res_low = res_high
             res = res_high
@@ -368,10 +368,11 @@ class TestCase(ProblemAspect):
         res_low.set_ac_runtime()
         res_high.set_ac_runtime()
          
-        static_validator = self._problem._classes.get(StaticValidator.PART_NAME)
-        print(f'\nbase is {self._base}')
-        if static_validator:
+        if self.testcasegroup.config['static_validation'] == 'true': #TODO GO HERE
+            static_validator = self._problem._classes.get(StaticValidator.PART_NAME)
             res_static = static_validator.validate(self.testcasegroup.config, self.testcasegroup)
+            
+        # print(f'res static is {res_static}')
         return (res, res_low, res_high)
 
     def _init_result_for_testcase(self, res: SubmissionResult) -> SubmissionResult:
@@ -408,7 +409,7 @@ class TestCaseGroup(ProblemAspect):
 
         self._seen_oob_scores = False
         self.debug('Loading test data group %s', datadir)
-        configfile = os.path.join(self._datadir, 'testdata.yaml')
+        configfile = os.path.join(self._datadir, 'test_group.yaml') #TODO or testdata?
         self.config: dict[str, Any] = {}
         if os.path.isfile(configfile):
             try:
@@ -424,7 +425,7 @@ class TestCaseGroup(ProblemAspect):
             for field, parent_value in parent.config.items():
                 if not field in self.config:
                     self.config[field] = parent_value
-
+        
         # TODO: Decide if these should stay
         # Some deprecated properties are inherited from problem config during a transition period
         problem_grading = problem.get(ProblemConfig)['grading']
@@ -446,6 +447,8 @@ class TestCaseGroup(ProblemAspect):
         for field, default in TestCaseGroup._DEFAULT_CONFIG.items():
             if field not in self.config:
                 self.config[field] = default
+                # print(f' new fig {self.config}')
+
 
         self._items: list[TestCaseGroup|TestCase] = []
         if os.path.isdir(datadir):
@@ -1508,7 +1511,7 @@ class StaticValidator(ProblemPart):
             
         return self._check_res
 
-    def validate(self, config: ProblemConfig,testcasename: str, feedback_dir_path: str|None = None) -> SubmissionResult:
+    def validate(self, testcasegroup_config: ProblemConfig,testcasename: str, feedback_dir_path: str|None = None) -> SubmissionResult:
         """
         Run the static validator on the test case groups and submission file
         
@@ -1518,14 +1521,13 @@ class StaticValidator(ProblemPart):
         entry_point =  "hello/submissions/accepted/hello.py" #TODO path to submission
         res = SubmissionResult('JE')
         
-        flags = self.problem.get(ProblemConfig)['validator_flags'].split() + config['static_validator_flags'].split()
+        flags = testcasegroup_config['static_validator_flags'].split()
         language = self.problem.get(ProblemConfig)['languages']
 
         if not self._validator:
             return res
         validator = self._validator[0]
-        
-        if self.problem.get(ProblemConfig)['static_validation'] == 'false' and self._validator: #TODO fixa så att den kollaar om stat val i test_group.yaml tom. Check kommer inte iterera genom alla testcases. lowkey ha i validate?
+        if testcasegroup_config['static_validation'] == 'false' and validator: #TODO fixa så att den kollaar om stat val i test_group.yaml tom. Check kommer inte iterera genom alla testcases. lowkey ha i validate?
             self.error('There is a static validator program but it is not specified in test_group.yaml')
         
 
@@ -1540,10 +1542,9 @@ class StaticValidator(ProblemPart):
         errfile = os.path.join(validator_output, f'err.txt')
         outfile = os.path.join(validator_output, f'out.txt')
         
-
         status, runtime = validator.run(args=[language, entry_point, feedbackdir]+flags, errfile=errfile, outfile=outfile)
         if os.WEXITSTATUS(status) != 42:
-            self.warning(f'The static validator exits with wrong exit code, status: {os.WEXITSTATUS(status) }')
+            self.warning(f'The static validator exits with wrong exit code, status: {os.WEXITSTATUS(status)}')
 
             
     
@@ -1554,14 +1555,16 @@ class StaticValidator(ProblemPart):
                     output = f.read()
                 if output:
                     self.log.debug("Validator output:\n%s", output)
-                    print(f'Validator output:\n%s, {output}') #TODO for testing
+                    # print(f'Validator output:\n%s, {output}') #TODO for testing
                 with open(errfile, mode="rt") as f:
                     error = f.read()
                 if error:
                     self.log.debug("Validator stderr:\n%s", error)
-                    print(f'Validator stderr:\n%s, {error}') #TODO
+                    # print(f'Validator stderr:\n%s, {error}') #TODO
             except IOError as e:
                 self.info("Failed to read validator output: %s", e)
+                
+        res = self._parse_validator_results(testcasename, status, feedbackdir)
                 
         
         return res
@@ -1585,7 +1588,7 @@ class StaticValidator(ProblemPart):
         return None
 
 
-    def _parse_validator_results(self, val, status: int, feedbackdir, testcase: TestCase) -> SubmissionResult: #TODO GÖR METOD 
+    def _parse_validator_results(self, val, status: int, feedbackdir) -> SubmissionResult: #TODO GÖR METOD 
         custom_score = self.problem.get(ProblemConfig)['grading']['custom_scoring']
         score = None
         # TODO: would be good to have some way of displaying the feedback for debugging uses
@@ -1605,6 +1608,15 @@ class StaticValidator(ProblemPart):
 
         if ret == 43:
             return SubmissionResult('WA', additional_info=StaticValidator._get_feedback(feedbackdir))
+
+        if os.path.isfile(score_file):
+            try:
+                score_str = open(score_file).read()
+                score = float(score_str)
+            except Exception as e:
+                return SubmissionResult('JE', reason=f'failed to parse validator score: {e}')
+            else:
+                return SubmissionResult('JE', reason='problem has custom scoring but validator did not produce "score.txt"')
 
         return SubmissionResult('AC', score=score)
         
