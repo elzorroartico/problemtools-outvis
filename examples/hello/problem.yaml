@@ -6,3 +6,4 @@ license: public domain
 # a test submission that goes over this limit.)
 limits:
   memory: 512
+static_validation: 'true'
